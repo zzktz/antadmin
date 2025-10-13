@@ -1,0 +1,34 @@
+{
+  "name": "zzktz/antmin",
+  "description": "",
+  "license": "MIT",
+  "require": {
+    "php": "^7.3|^8.0",
+    "guzzlehttp/guzzle": "^6.3 || ^7.0.1",
+    "laravel/framework": "^8.12",
+    "tymon/jwt-auth": "^1.0"
+  },
+  "require-dev": {
+
+  },
+  "autoload": {
+    "files": [
+    ],
+    "psr-4": {
+      "Antmin\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+  },
+  "extra": {
+  },
+  "config": {
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
