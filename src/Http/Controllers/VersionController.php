@@ -20,7 +20,6 @@ class VersionController extends BaseController
     public function operate(Request $request)
     {
         $action = $request['action'];
-        unset($request['action']);
         if (method_exists(self::class, $action)) return self::$action($request);
         return errJson('No find action');
     }

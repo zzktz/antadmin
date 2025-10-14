@@ -10,10 +10,10 @@ use Antmin\Exceptions\CommonException;
 use Antmin\Tool\VersionTool;
 use Antmin\Third\VersionThird;
 use Illuminate\Support\Facades\File;
-use Exception;
 use Illuminate\Support\Facades\Redis;
-use Symfony\Component\Process\Process;
+use Exception;
 use ZipArchive;
+use Symfony\Component\Process\Process;
 
 class VersionService
 {
@@ -43,9 +43,9 @@ class VersionService
             if (!Base::isVersionFormat($curVersionNo)) {
                 return 0;
             }
-            $res          = self::getLatestVersion($curVersionNo);
-            $versionNo    = $res['version_no'] ?? '0.0.0';
-            $maxVersionNo = Base::getMaxVersion($versionNo, $curVersionNo);
+            $latestVersion = self::getLatestVersion($curVersionNo);
+            $versionNo     = $latestVersion['version_no'] ?? '0.0.0';
+            $maxVersionNo  = Base::getMaxVersion($versionNo, $curVersionNo);
             if ($maxVersionNo == $curVersionNo) {
                 return 0;
             }
@@ -102,9 +102,6 @@ class VersionService
         if ($isLock) {
             throw new CommonException('正在执行升级，不可重复执行');
         }
-
-        # 更新后台Php
-        //VersionTool::pull();
 
         # 获取下载文件信息
         $fileInfo  = pathinfo(parse_url($zipUrl, PHP_URL_PATH));
@@ -206,10 +203,9 @@ class VersionService
 
     protected static function isHasLock(): bool
     {
-        $key   = 'update_version_lock';
-        $redis = Redis::connection('default');
-        if (empty($redis->get($key))) {
-            $redis->setex($key, 120, 1);
+        $key = 'update_version_lock';
+        if (empty(Redis::get($key))) {
+            Redis::setex($key, 120, 1);
             return false;
         }
         return true;
@@ -217,9 +213,8 @@ class VersionService
 
     protected static function delLock(): bool
     {
-        $key   = 'update_version_lock';
-        $redis = Redis::connection('default');
-        $redis->del($key);
+        $key = 'update_version_lock';
+        Redis::del($key);
         return true;
     }
 

@@ -51,8 +51,8 @@ class LoginService
         } catch (Exception $e) {
             # 失败
             $num = SafeService::flagFail();
-            $str = SafeService::getMaxTip();
-            throw new CommonException('第' . $num . '次' . $e->getMessage().'，'.$str);
+            $msg = '第' . $num . '次' . $e->getMessage() . '，' . SafeService::getMaxTip();
+            throw new CommonException($msg);
         }
     }
 
@@ -74,7 +74,7 @@ class LoginService
         }
         $info = AccountRepository::getInfoByMobile($mobile);
         if (empty($info)) {
-            throw new CommonException('手机号不存在', [], 401, 401);
+            throw new CommonException('手机号不存在');
         }
         return TokenRepository::getTokenById($info['id']);
     }

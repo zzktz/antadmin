@@ -7,10 +7,39 @@ namespace Antmin\Http\Controllers;
 
 
 use Antmin\Common\Base;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\AccountService;
+use Antmin\Http\Services\LoginService;
+use Illuminate\Http\Request;
 
 class AccountController extends BaseController
 {
+
+
+    /**
+     * 登陆
+     * @param Request $request
+     * @return mixed
+     */
+    public function login(Request $request)
+    {
+        $requdata = $request->all();
+        if (isset($requdata['username'])) {
+            $name     = Base::getValue($request, 'username', '', 'required|max:50');
+            $password = Base::getValue($request, 'password', '', 'required|max:50');
+            $token    = LoginService::accountLogin($name, $password);
+        } else {
+            $mobile = Base::getValue($request, 'mobile', '', 'required');
+            if (!Base::isMobile($mobile)) {
+                throw new CommonException('手机号格式不正确');
+            }
+            $smscode = Base::getValue($request, 'captcha', '', 'required|max:6');
+            $token   = LoginService::mobileLogin($mobile, $smscode);
+        }
+        info($token);
+        return Base::sucJson('成功', ['token' => $token]);
+    }
+
 
 
     /**
@@ -24,7 +53,7 @@ class AccountController extends BaseController
         $limit = Base::getValue($request, "pageSize", '', 'integer');
         $limit = $limit ?? 10;
         $res   = AccountService::accountList($limit, $opId);
-        return sucJson('成功', $res);
+        return Base::sucJson('成功', $res);
     }
 
     /**
@@ -43,7 +72,7 @@ class AccountController extends BaseController
         $email    = $email ?? $mobile . '@163.com';
         
         AccountService::accountAdd($nickname, $email, $mobile, $roles, $password, $opId);
-        return sucJson('成功');
+        return Base::sucJson('成功');
     }
 
     /**
@@ -61,7 +90,7 @@ class AccountController extends BaseController
         $roles    = Base::getValue($request, 'roles', '', 'required');
         $email    = $email ?? $mobile . '@163.com';
         AccountService::accountEdit($nickname, $email, $mobile, $roles, $id, $opId);
-        return sucJson('成功');
+        return Base::sucJson('成功');
     }
 
     /**
@@ -75,7 +104,7 @@ class AccountController extends BaseController
         $id       = Base::getValue($request, "id", '', 'required|integer');
         $password = Base::getValue($request, 'password', '', 'required');
         AccountService::accountEditPassword($password, $id, $opId);
-        return sucJson('成功');
+        return Base::sucJson('成功');
     }
 
     /**
@@ -88,7 +117,7 @@ class AccountController extends BaseController
         $opId = $request['accountId'];
         $id   = Base::getValue($request, "id", '', 'required|integer');
         AccountService::accountEditStatus($id, $opId);
-        return sucJson('成功');
+        return Base::sucJson('成功');
     }
 
     /**
@@ -101,7 +130,7 @@ class AccountController extends BaseController
         $opId = $request['accountId'];
         $id   = Base::getValue($request, "id", '', 'required|integer');
         $res  = AccountService::accountDetail($id, $opId);
-        return sucJson('成功', $res);
+        return Base::sucJson('成功', $res);
     }
 
     /**
@@ -114,6 +143,6 @@ class AccountController extends BaseController
         $opId = $request['accountId'];
         $id   = Base::getValue($request, "id", '', 'required|integer');
         AccountService::accountDel($id, $opId);
-        return sucJson('成功');
+        return Base::sucJson('成功');
     }
 }

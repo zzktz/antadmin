@@ -6,11 +6,9 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
-use App\Exceptions\CommonException;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\AccountService;
 use Antmin\Http\Services\PersonSetService;
-use Antmin\Http\Services\OperateLogService;
-use Cache;
 
 class PersonSetController extends BaseController
 {
@@ -57,12 +55,10 @@ class PersonSetController extends BaseController
      */
     public static function resetPassword($request)
     {
-        $accountId = $request['accountId'];
         $password  = Base::getValue($request, 'password', '', 'required|max:32');
         if (!Base::isValidMd5($password)) {
             throw new CommonException('不是有效的密码字符');
         }
-
         return Base::sucJson('成功');
     }
 

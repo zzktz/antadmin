@@ -7,10 +7,7 @@ namespace Antmin\Common;
 
 use Validator;
 use Antmin\Exceptions\CommonException;
-
-use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class Base
 {

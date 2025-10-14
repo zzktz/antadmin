@@ -4,6 +4,7 @@ namespace Antmin\Providers;
 
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use Antmin\Middleware\Middleware;
+
 class ServiceProvider extends BaseServiceProvider
 {
     public function register()
@@ -23,8 +24,7 @@ class ServiceProvider extends BaseServiceProvider
 //        }
 
         $this->loadRoutesFrom(__DIR__ . '/../Config/Route.php');
-        // 注册包的中间件
+        # 注册包的中间件
         $this->app['router']->aliasMiddleware('antAuth', Middleware::class);
-        //$this->loadMigrationsFrom(__DIR__.'/../database/migrations'); // 加载迁移
     }
 }

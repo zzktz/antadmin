@@ -62,7 +62,7 @@ class SafeService
      */
     public static function flagSuccess(): void
     {
-        $key   = self::getUserKey();
+        $key   = self::getKey();
         $redis = Redis::connection('default');
         $redis->del($key);
     }

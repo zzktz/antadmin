@@ -6,7 +6,6 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
-use Antmin\Http\Services\AccountService;
 use Antmin\Http\Services\ItemService;
 use Illuminate\Http\Request;
 
@@ -21,11 +20,10 @@ class ItemController extends BaseController
      */
     public function operate(Request $request)
     {
-        $action               = $request['action'];
-        $request['accountId'] = AccountService::getAccountIdByToken();
+        $action = $request['action'];
         unset($request['action']);
         if (method_exists(self::class, $action)) return self::$action($request);
-        return errJson('No find action');
+        return Base::errJson('No find action');
     }
 
     /**

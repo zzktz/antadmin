@@ -23,7 +23,8 @@ class VersionThird
      */
     public static function getLatestVersion(string $projectId, string $curVersion): array
     {
-        $appUrl               = self::$apiUrl . 'getVersionInfo';
+        $appUrl = self::$apiUrl . 'getVersionInfo';
+
         $params['projectId']  = $projectId;
         $params['curVersion'] = $curVersion;
         $resStr               = self::reqestUrl('POST', $appUrl, $params);

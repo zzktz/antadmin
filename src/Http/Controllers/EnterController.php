@@ -6,7 +6,6 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Exceptions\CommonException;
-use Antmin\Http\Services\AccountService;
 use Illuminate\Http\Request;
 
 class EnterController extends BaseController
@@ -15,8 +14,7 @@ class EnterController extends BaseController
 
     public function operate(Request $request)
     {
-        $action               = $request['action'];
-        $request['accountId'] = AccountService::getAccountIdByToken();
+        $action = $request['action'];
         unset($request['action']);
         if (method_exists(self::class, $action)) return self::$action($request);
         throw new CommonException('System Not Find Action');

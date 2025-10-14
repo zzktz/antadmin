@@ -6,7 +6,6 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
-use Antmin\Http\Services\AccountService;
 use Antmin\Tool\CacheTool;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -16,19 +15,18 @@ class LogsController extends BaseController
 {
 
     /**
-     * 入口
+     * 日志入口
      * @param Request $request
      * @return mixed
      */
     public function operate(Request $request)
     {
-        $request['accountId'] = AccountService::getAccountIdByToken();
         if ($request['accountId'] != 1) {
-            return Base::sucJson('无权操作');
+            return Base::errJson('无权操作');
         }
-        $action = Base::getValue($request, 'action', '', 'required|max:50');
+        $action = $request['action'];
         if (method_exists(self::class, $action)) return self::$action($request);
-        return errJson('No find action');
+        return Base::errJson('No find action');
     }
 
     /**
@@ -37,16 +35,11 @@ class LogsController extends BaseController
      */
     public static function index($request)
     {
-        $type = Base::getValue($request, 'type', '', 'required|max:50');
-        if ($type == 'sql') {
-            $path = 'logs/sqllog.log';
-        } else {
-            $path = 'logs/laravel.log';
-        }
-        $str            = Storage::disk('storage')->get($path);
-        $content        = nl2br($str);
-        $res['content'] = $content;
-        return Base::sucJson('成功', $res);
+        $type    = Base::getValue($request, 'type', '', 'required|max:50');
+        $path    = self::getLogPathByType($type);
+        $string  = Storage::disk('storage')->get($path);
+        $content = nl2br($string);
+        return Base::sucJson('成功', ['content' => $content]);
     }
 
     /**
@@ -56,30 +49,40 @@ class LogsController extends BaseController
     public static function clear($request)
     {
         $type = Base::getValue($request, 'type', '', 'required|max:50');
-        if ($type == 'sql') {
-            $path = 'logs/sqllog.log';
-        } else {
-            $path = 'logs/laravel.log';
-        }
+        $path = self::getLogPathByType($type);
         $stor = Storage::disk('storage');
         if ($stor->exists($path)) {
             File::put($stor->path($path), '上次清空:' . date('Y-m-d H:i:s') . PHP_EOL);
         } else {
-            return errJson('不存在');
+            return Base::errJson('不存在');
         }
         return Base::sucJson('成功');
     }
 
+
     /**
      * 全部清空Model数据Redis缓存
-     * @param $request
      * @return mixed
      */
-    public static function clearCache($request)
+    public static function clearCache()
     {
         CacheTool::clearDatabase();
         return Base::sucJson('成功');
     }
 
+    /**
+     * 日志类型
+     * @param string $type
+     * @return string
+     */
+    private static function getLogPathByType(string $type): string
+    {
+        $arr = [
+            'sql'     => 'logs/sqllog.log',
+            'laravel' => 'logs/laravel.log',
+        ];
+        return $arr[$type] ?? $arr['laravel'];
+    }
+    
 
 }

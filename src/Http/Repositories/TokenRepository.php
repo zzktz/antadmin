@@ -25,7 +25,7 @@ class TokenRepository
             if (empty($arr['role'])) {
                 throw new CommonException('Token 无角色设置');
             }
-            if ($role!= AccountRepository::$guardRole) {
+            if ($role != AccountRepository::$guardRole) {
                 throw new CommonException('Token 非法角色');
             }
             return $id;
@@ -56,7 +56,7 @@ class TokenRepository
         ];
         # 生成 token
         $token = JWTAuth::customClaims($customClaims)->fromUser($accoutInfo);
-        self::saveTokens($accoutId, $token);
+        self::saveTokens($token, $accoutId);
         return $token;
     }
 

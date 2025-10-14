@@ -66,7 +66,7 @@ class SystemSetController extends BaseController
         $id  = Base::getValue($request, 'id', '', 'required|integer');
         $one = SystemSetService::systemSetDetail($id);
         if (empty($one)) {
-            return errJson('信息不存在');
+            return Base::errJson('信息不存在');
         }
         $info['is_show'] = $one['is_show'] == 1 ? 0 : 1;
         SystemSetService::systemSetEdit($info, $id);
@@ -90,19 +90,6 @@ class SystemSetController extends BaseController
         }
         return Base::sucJson('成功', $res ?? []);
     }
-//    public static function systemSetOneDetailContent($request)
-//    {
-//        $method = $request->method();
-//        if ($method == 'GET') {
-//            $setId = Base::getValue($request, 'id', '', 'required|integer');
-//            $res   = SystemSetService::oneDetailContentGet($setId);
-//        } else {
-//            $data = Base::getValue($request, 'InfoData', '数据', 'array');
-//            SystemSetService::oneDetailContentPost($data);
-//        }
-//        return Base::sucJson('成功', $res ?? []);
-//    }
-
 
     /**
      * 配置 列表
@@ -154,18 +141,16 @@ class SystemSetController extends BaseController
             $one['item']     = SystemSetService::systemSetItemTree();
             return Base::sucJson('ok', $one);
         }
-
+        $tabdatas            = Base::getValue($request, 'tabdatas', '', 'array');
         $info['title']       = Base::getValue($request, 'title', '标题', 'required|max:200');
         $info['item_type']   = Base::getValue($request, 'item_type', '', 'required|max:50');
         $info['is_required'] = Base::getValue($request, 'is_required', '', 'bool');
         $info['is_show']     = Base::getValue($request, 'is_show', '', 'bool');
-        $tabdatas            = Base::getValue($request, 'tabdatas', '', 'array');
-        $info['tip']       = Base::getValue($request, 'tip', '提示', 'max:200');
-        if (!empty($tabdatas)) {
-            $info['option'] = json_encode($tabdatas);
-        }
+        $info['tip']         = Base::getValue($request, 'tip', '提示', 'max:200');
+        $info['option']      = !empty($tabdatas) ? json_encode($tabdatas) : [];
+
         SystemSetService::oneDetailConfigEdit($info, $id);
-        return Base::sucJson('ok');
+        return Base::sucJson('成功');
     }
 
     /**
@@ -177,7 +162,7 @@ class SystemSetController extends BaseController
     {
         $id = Base::getValue($request, 'id', '', 'required|integer');
         SystemSetService::oneDetailConfigDel($id);
-        return Base::sucJson('ok');
+        return Base::sucJson('成功');
     }
 
     /**
