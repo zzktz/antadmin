@@ -36,7 +36,6 @@ class AccountController extends BaseController
             $smscode = Base::getValue($request, 'captcha', '', 'required|max:6');
             $token   = LoginService::mobileLogin($mobile, $smscode);
         }
-        info($token);
         return Base::sucJson('成功', ['token' => $token]);
     }
 

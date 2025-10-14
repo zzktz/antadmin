@@ -83,6 +83,6 @@ class LogsController extends BaseController
         ];
         return $arr[$type] ?? $arr['laravel'];
     }
-    
+
 
 }
