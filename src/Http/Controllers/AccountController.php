@@ -40,7 +40,6 @@ class AccountController extends BaseController
     }
 
 
-
     /**
      * 账号列表
      * @param $request
