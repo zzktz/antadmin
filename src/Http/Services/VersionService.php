@@ -66,7 +66,6 @@ class VersionService
         $projectId = self::getProjectId();
         $basePath  = base_path();
         $gitPath   = $basePath . '/.git';
-        $distBase  = $basePath . '/public/dist_admin/';
         if (!file_exists($gitPath)) {
             throw new CommonException('后台仓库需要初始化');
         }
@@ -80,18 +79,17 @@ class VersionService
         $rest   = VersionThird::getLatestVersion($projectId, $curVersion);
         $zipUrl = $rest['zipUrl'] ?? '';
         $flag   = $rest['flag'] ?? '';
+
         if (empty($zipUrl)) {
             throw new CommonException('下载文件地址不存在');
         }
         if (empty($flag)) {
             throw new CommonException('项目flag不存在');
         }
-        if (!file_exists($distBase)) {
-            # 加软连接
-            self::createDistSoftLink();
-        }
+
+        $distPath = $basePath . '/public/dist/'.$flag;
+
         # 项目文件夹 请先确保nginx正确部署
-        $distPath = $distBase;
         if (!file_exists($distPath)) {
             # 创建文件夹
             File::makeDirectory($distPath, 0777);
