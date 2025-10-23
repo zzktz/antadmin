@@ -7,8 +7,6 @@ Route::group([
     'middleware' => 'antAuth'
 ], function () {
 
-    Route::get('test', 'Antmin\Http\Controllers\DemoController@operate');
-
     Route::any('systemLogin',           'Antmin\Http\Controllers\AccountController@login');
     Route::any('systemIndexOperate',    'Antmin\Http\Controllers\EnterController@operate');
     Route::any('systemUploadOperate',   'Antmin\Http\Controllers\UploadController@operate');
@@ -16,6 +14,7 @@ Route::group([
     Route::any('systemVersionOperate',  'Antmin\Http\Controllers\VersionController@operate');
     Route::any('systemLogsOperate',     'Antmin\Http\Controllers\LogsController@operate');
     Route::any('systemItemOperate',     'Antmin\Http\Controllers\ItemController@operate');
-
+    Route::any('requestLogOperate', 	'Antmin\Http\Controllers\RequestLogController@operate');
+    Route::any('operateLogOperate', 	'Antmin\Http\Controllers\OperateLogController@operate');
 
 });
