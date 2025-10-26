@@ -5,7 +5,7 @@
 
 namespace Antmin\Http\Controllers;
 
-use App\Common\Base;
+use Antmin\Common\Base;
 use Antmin\Http\Services\RequestLogService;
 use Illuminate\Http\Request;
 
@@ -45,7 +45,8 @@ class RequestLogController extends BaseController
      */
     protected static function clear($request)
     {
-        RequestLogService::clear();
+        $accountId = $request['accountId'];
+        RequestLogService::clear($accountId);
         return sucJson('成功');
     }
 }

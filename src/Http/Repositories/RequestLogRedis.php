@@ -5,7 +5,7 @@ namespace Antmin\Http\Repositories;
 use Antmin\Http\Resources\RequestLogResource;
 use Illuminate\Support\Facades\Redis;
 
-class RequestLogRepository
+class RequestLogRedis
 {
 
 
@@ -54,7 +54,7 @@ class RequestLogRepository
     /**
      * 【日志内存储存】写入
      */
-    public static function addRedisStorage(array $data): void
+    public static function addStorage(array $data): void
     {
         $key = self::getStatKey() . '_store_' . date('m');
         Redis::lpush($key, json_encode($data));

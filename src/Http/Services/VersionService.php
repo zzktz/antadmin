@@ -11,6 +11,7 @@ use Antmin\Tool\VersionTool;
 use Antmin\Third\VersionThird;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Storage;
 use Exception;
 use ZipArchive;
 use Symfony\Component\Process\Process;
@@ -61,11 +62,12 @@ class VersionService
      * @param string $curVersion
      * @return bool
      */
-    public static function updateVersion(string $curVersion)
+    public static function updateVersion(string $curVersion):bool
     {
-        $projectId = self::getProjectId();
-        $basePath  = base_path();
-        $gitPath   = $basePath . '/.git';
+        $projectId  = self::getProjectId();
+        $basePath   = base_path();
+        $publicPath = public_path();
+        $gitPath    = $basePath . '/.git';
         if (!file_exists($gitPath)) {
             throw new CommonException('后台仓库需要初始化');
         }
@@ -87,12 +89,13 @@ class VersionService
             throw new CommonException('项目flag不存在');
         }
 
-        $distPath = $basePath . '/public/dist/'.$flag;
+        $distPath = $publicPath . '/dist/' . $flag;
 
         # 项目文件夹 请先确保nginx正确部署
         if (!file_exists($distPath)) {
-            # 创建文件夹
-            File::makeDirectory($distPath, 0777);
+            # 创建文件夹 动态创建 local2 磁盘配置
+            $localDisk = Storage::build(['driver' => 'local', 'root' => $publicPath]);
+            $localDisk->makeDirectory('dist/' . $flag);
         }
         info('项目开始更新');
         # 加锁

@@ -2,7 +2,7 @@
 
 namespace Antmin\Tool;
 
-use App\Exceptions\CommonException;
+use Antmin\Exceptions\CommonException;
 use Illuminate\Support\Facades\Redis;
 use Exception;
 use Config;
@@ -14,32 +14,19 @@ class CacheTool
 
 
     /**
-     * @param int $dbId
-     * @param string $connection
+     * 清除指定Redis数据库的数据
      * @return void
      */
     public static function clearDatabase()
     {
-        $connection = self::$connection;
-        $redis      = Redis::connection($connection);
-        # 选择目标数据库
-        $redis->select(0);
-        $redis->flushdb();
+        $redis = Redis::connection(self::$connection);
 
-        $redis->select(1);
-        $redis->flushdb();
+        $databases = [0, 1, 2, 3, 4, 13];
 
-        $redis->select(2);
-        $redis->flushdb();
-
-        $redis->select(3);
-        $redis->flushdb();
-
-        $redis->select(4);
-        $redis->flushdb();
-
-        $redis->select(13);
-        $redis->flushdb();
+        foreach ($databases as $db) {
+            $redis->select($db);
+            $redis->flushdb();
+        }
     }
 
     /**
@@ -202,7 +189,7 @@ class CacheTool
      * @param string $selfClass
      * @return string
      */
-    public static function getPrefix(string $fix, string $selfClass)
+    public static function getPrefix(string $fix, string $selfClass):string
     {
         return str_replace(['\\', '.'], '_', $selfClass) . '_' . $fix;
     }

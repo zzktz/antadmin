@@ -5,84 +5,197 @@
 
 namespace Antmin\Http\Services;
 
+use Antmin\Tool\StatTool;
+use Antmin\Tool\MemberTool;
+use Antmin\Exceptions\CommonException;
+use Antmin\Http\Repositories\RequestLogRedis;
+use Antmin\Http\Repositories\RequestLogQueue;
 
-use App\Http\Tool\LogRequestTool;
-use App\Common\Base;
-use Antmin\Http\Repositories\RequestLogRepository;
 
 class RequestLogService
 {
+
     /**
-     * 请求日志 列表
+     * 过滤请求的 url 特征值
+     * @var array|string[]
+     */
+    protected static array $urlsToRemove = [
+        'fileUpload', 'systemUploadEditor',
+        'systemUploadOperate', 'requestLogOperate', 'systemLogsOperate',
+    ];
+
+    /**
+     * 过滤请求 params 参数 key
+     * @var array|string[]
+     */
+    protected static array $keysToRemove = [
+        'token', 'ReqClient', 'action', 'systemType',
+        'envVersion', 'page', 'requestUuid', 'openid', 'deviceId'
+    ];
+
+
+    /**
+     * 【请求日志】 列表
      * @param int $limit
      * @param array $search
      * @return array
      */
     public static function getList(int $limit, array $search = []): array
     {
-        $res = RequestLogRepository::getList($limit, $search);
-        if (empty($res['data'])) {
-            return $res;
+        $logStorage = config('antmin.logStorage');
+        if ($logStorage == 'rabbitmq') {
+            return [];
+        } else {
+            return RequestLogRedis::getList($limit, $search);
         }
-        $rest = [];
-        foreach ($res['data'] as $k => $v) {
-            $rest[$k]            = $v;
-            $rest[$k]['app_env'] = $v['app_env'] == 'dev' ? Base::tag($v['app_env'], 'orange') : Base::tag($v['app_env'], 'green');
-            $rest[$k]['method']  = $v['method'] == 'GET' ? Base::tag($v['method'], 'blue') : Base::tag($v['method'], 'green');
-            if ($v['response_status'] > 200 && $v['response_status'] < 500) {
-                $rest[$k]['response_status'] = Base::tag($v['response_status'], '#108ee9');
-            } else if ($v['response_status'] == 200) {
-                $rest[$k]['response_status'] = Base::tag($v['response_status'], 'green');
-            } else {
-                $rest[$k]['response_status'] = Base::tag($v['response_status'], '#f50');
-            }
-            if ($v['client'] == 'mini') {
-                $rest[$k]['client'] = Base::tag($v['client'], 'green');
-            } else if ($v['client'] == 'storeconsole') {
-                $rest[$k]['client'] = Base::tag($v['client'], 'blue');
-            } else if ($v['client'] == 'adminconsole') {
-                $rest[$k]['client'] = Base::tag($v['client'], 'blue');
-            }
-            if ($v['client'] == 'mini') { # 显示系统和版本
-                $rest[$k]['systemType'] = Base::tag($v['systemType'], '');
-                if ($v['envVersion'] == 'develop') {
-                    $rest[$k]['envVersion'] = Base::tag($v['envVersion'], 'orange');
-                } else if ($v['envVersion'] == 'release') {
-                    $rest[$k]['envVersion'] = Base::tag($v['envVersion'], 'green');
-                } else {
-                    $rest[$k]['envVersion'] = Base::tag($v['envVersion'], 'blue');
-                }
-            } else {
-                $rest[$k]['systemType'] = '';
-                $rest[$k]['envVersion'] = '';
-            }
-            # $rest[$k]['executionTime'] = Base::tag($v['executionTime'], 'green');
-            $rest[$k]['action'] = $v['action'] ? Base::tag($v['action'], '') : '';
-            $rest[$k]['id']     = $v['uuid'];
-            $isSql              = LogRequestTool::getSqlQueryLog($v['uuid']);
-            if (!empty($isSql)) {
-                $rest[$k]['is_sql'] = Base::tag('有', 'red');
-            } else {
-                $rest[$k]['is_sql'] = Base::tag('无', 'green');
-            }
-            $rest[$k]['sqlres']        = LogRequestTool::getSqlQueryLog($v['uuid']);
-            $rest[$k]['is_expand']     = false;
-            $rest[$k]['content']       = $v['response_content'] ? json_decode($v['response_content'], true) : [];
-            $rest[$k]['paramsarr']     = $v['params'] ? json_decode($v['params'], true) : [];
-            $rest[$k]['executionTime'] = !empty($rest[$k]['content']['useTime']) ? Base::tag($rest[$k]['content']['useTime'], 'green') : '';
+    }
 
+
+    /**
+     * 【请求日志】添加
+     * @param array $arr
+     * @return void
+     */
+    public static function add(array $arr): void
+    {
+        # 数据提取和预处理
+        $data = self::prepareLogData($arr);
+
+        # 统计处理
+        self::handleStatistics($arr);
+
+        # URL过滤检查
+        if (self::shouldFilter($data['url'])) {
+            return;
         }
-        unset($res['data']);
-        $res['data'] = $rest;
-        return $res;
+        # 存储
+        $logStorage = config('antmin.logStorage');
+        if ($logStorage == 'rabbitmq') {
+            RequestLogQueue::addStorage($data);
+        } else {
+            RequestLogRedis::addStorage($data);
+        }
+
+    }
+
+
+    /**
+     * 清空数据
+     * @param int $accountId
+     * @return void
+     */
+    public static function clear(int $accountId): void
+    {
+        if ($accountId !== 1) {
+            throw new CommonException('非超级管理员无权操作');
+        }
+        RequestLogRedis::clearData();
+    }
+
+
+    /**
+     * 准备日志数据
+     */
+    protected static function prepareLogData(array $arr): array
+    {
+        $params       = self::filterParams($arr['params'] ?? []);
+        $paramJson    = self::formatParams($params);
+        $queryLogJson = self::formatParams($arr['query_log']);
+
+        return [
+            'uuid'             => $arr['uuid'] ?? '',
+            'app_env'          => env('APP_ENV'),
+            'app_name'         => env('APP_NAME'),
+            'url'              => self::getRequestUrl($arr),
+            'client'           => $arr['client'] ?? '',
+            'method'           => $arr['method'] ?? '',
+            'action'           => $arr['params']['action'] ?? '',
+            'systemType'       => $arr['params']['systemType'] ?? '',
+            'envVersion'       => $arr['params']['envVersion'] ?? '',
+            'header'           => $arr['header'] ?? '',
+            'params'           => $paramJson,
+            'query_log'        => $queryLogJson, # 添加查询日志到记录数据
+            'response_status'  => $arr['response_status'] ?? 0,
+            'response_content' => self::getResponseContent($arr),
+            'request_at'       => now()->toDateTimeString(),
+        ];
     }
 
     /**
-     * 清空
-     * @return mixed
+     * 获取请求URL
      */
-    public static function clear()
+    protected static function getRequestUrl(array $arr): string
     {
-        return RequestLogRepository::clearData();
+        return removeUrls($arr['url'] ?? '');
     }
+
+    /**
+     * 格式化参数
+     */
+    protected static function formatParams(array $params): string
+    {
+        $json = json_encode($params, JSON_UNESCAPED_UNICODE);
+        return mb_substr($json, 0, 2000);
+    }
+
+    /**
+     * 获取响应内容（只在成功时返回）
+     */
+    protected static function getResponseContent(array $arr): string
+    {
+        $statusCode = $arr['response_status'] ?? 0;
+        $response   = $arr['response_content'] ?? '';
+
+        return $statusCode === 200 ? $response : '';
+    }
+
+    /**
+     * 处理统计
+     */
+    protected static function handleStatistics(array $arr): void
+    {
+        $memberId = $arr['params']['memberId'] ?? 0;
+        $key      = RequestLogRedis::getStatKey();
+
+        StatTool::setEveryHourStat($key);
+        StatTool::setEveryDayStat($key);
+        StatTool::setEveryMonthStat($key);
+        StatTool::setEveryYearStat($key);
+        StatTool::setTotalStat($key);
+
+        if (!empty($memberId)) {
+            MemberTool::stat($memberId);
+        }
+    }
+
+    /**
+     * 判断是否应该过滤URL
+     */
+    protected static function shouldFilter(string $url): bool
+    {
+        return self::isFilterUrl($url);
+    }
+
+
+    /**
+     * 过滤参数
+     */
+    protected static function filterParams(array $param): array
+    {
+        $keysToRemove = self::$keysToRemove;
+        return array_diff_key($param, array_flip($keysToRemove));
+    }
+
+    /**
+     * 过滤url
+     */
+    protected static function isFilterUrl(string $url): bool
+    {
+        if (empty($url)) return false;
+        return !empty(array_filter(self::$urlsToRemove, function ($item) use ($url) {
+            return strpos($url, $item) !== false;
+        }));
+    }
+
+
 }
