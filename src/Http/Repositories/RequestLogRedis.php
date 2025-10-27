@@ -28,7 +28,7 @@ class RequestLogRedis
      */
     public static function getLogData(int $perPage = 10): array
     {
-        $page = request()['page'] ?? 1;
+        $page = request()['pageNo'] ?? 1;
         $key  = self::getStatKey() . '_store_' . date('m');
         # 使用 Redis 获取 api_request_logs 列表的总长度
         $totalLogs = Redis::llen($key);

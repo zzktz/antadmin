@@ -1,2 +1,1 @@
-antmin 1.0
-ok
+antmin 1.0.5 

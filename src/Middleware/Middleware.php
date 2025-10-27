@@ -19,9 +19,10 @@ class Middleware
      */
     public static function handle($request, Closure $next)
     {
-        $path   = $request->path();
-        $method = self::getMethodName($path);
-        $token  = $request->header('Access-Token');
+        $path            = $request->path();
+        $method          = self::getMethodName($path);
+        $token           = $request->header('Access-Token');
+        $request['page'] = $request['pageNo'] ?? 1;
         # 过滤
         if (in_array($method, Filter::getFilterMethod())) {
             return $next($request);
