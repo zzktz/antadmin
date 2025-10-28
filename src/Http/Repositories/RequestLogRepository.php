@@ -13,7 +13,9 @@ class RequestLogRepository
 
     public static function getList($limit, $search = []): array
     {
-        $query = Model::query();
+        $query   = Model::query();
+        $appName = config('app.name');
+        $query->where('app_name', $appName);
         if (!empty($search)) {
             if (!empty($search['id'])) {
                 $query->where('id', $search['id']);
@@ -25,8 +27,8 @@ class RequestLogRepository
                 $query->where('client', $search['client']);
             }
             if (!empty($search['start_at'])) {
-                $query->where('created_at','>=', $search['start_at']);
-                $query->where('created_at','<=', $search['end_at']);
+                $query->where('created_at', '>=', $search['start_at']);
+                $query->where('created_at', '<=', $search['end_at']);
             }
             if (!empty($search['response_status'])) {
                 $query->where('response_status', $search['response_status']);
