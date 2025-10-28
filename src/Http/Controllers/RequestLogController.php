@@ -31,10 +31,18 @@ class RequestLogController extends BaseController
      */
     protected static function index($request)
     {
-        $limit  = Base::getValue($request, 'pageSize', '', 'integer');
-        $search = [];
-        $limit  = $limit ?? 5;
-        $data   = RequestLogService::getList($limit, $search);
+        $limit                     = Base::getValue($request, 'pageSize', '', 'integer');
+        $search['id']              = Base::getValue($request, 'id', '', 'integer');
+        $dateArr                   = Base::getValue($request, 'request_at', '', 'array');
+        $search['app_env']         = Base::getValue($request, 'app_env', '', '');
+        $search['client']          = Base::getValue($request, 'client', '', '');
+        $search['response_status'] = Base::getValue($request, 'response_status', '', '');
+        if (!empty($dateArr)) {
+            $search['start_at'] = reset($dateArr) . ' 00:00:00';
+            $search['end_at']   = end($dateArr) . ' 23:59:59';
+        }
+        $limit = $limit ?? 5;
+        $data  = RequestLogService::getList($limit, $search);
         return sucJson('成功', $data);
     }
 

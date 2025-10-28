@@ -11,7 +11,6 @@ use Antmin\Exceptions\CommonException;
 use Antmin\Http\Repositories\RequestLogRedis;
 use Antmin\Http\Repositories\RequestLogQueue;
 
-
 class RequestLogService
 {
 
@@ -44,7 +43,7 @@ class RequestLogService
     {
         $logStorage = config('antmin.logStorage');
         if ($logStorage == 'rabbitmq') {
-            return [];
+            return RequestLogQueue::getList($limit, $search);
         } else {
             return RequestLogRedis::getList($limit, $search);
         }

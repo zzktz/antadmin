@@ -2,6 +2,8 @@
 
 namespace Antmin\Http\Repositories;
 
+use Base;
+use Antmin\Models\RequestLog as Model;
 use Antmin\Http\Resources\RequestLogResource;
 use Illuminate\Support\Facades\Redis;
 
@@ -11,7 +13,28 @@ class RequestLogRepository
 
     public static function getList($limit, $search = []): array
     {
-        return RequestLogResource::getList($limit, $search);
+        $query = Model::query();
+        if (!empty($search)) {
+            if (!empty($search['id'])) {
+                $query->where('id', $search['id']);
+            }
+            if (!empty($search['app_env'])) {
+                $query->where('app_env', $search['app_env']);
+            }
+            if (!empty($search['client'])) {
+                $query->where('client', $search['client']);
+            }
+            if (!empty($search['start_at'])) {
+                $query->where('created_at','>=', $search['start_at']);
+                $query->where('created_at','<=', $search['end_at']);
+            }
+            if (!empty($search['response_status'])) {
+                $query->where('response_status', $search['response_status']);
+            }
+        }
+        $query->orderBy('id', 'desc');
+        $datas = Base::listFormat($limit, $query);
+        return RequestLogResource::getFormatList($datas);
     }
 
     public static function getListData($limit, $search = []): array

@@ -15,6 +15,12 @@ class RequestLogQueue
     public static string $queueName = 'log_request';
 
 
+    public static function getList(int $limit, $search = [])
+    {
+        return RequestLogRepository::getList($limit, $search);
+    }
+
+
     public static function getConfig(): array
     {
         return [
