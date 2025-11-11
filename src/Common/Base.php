@@ -611,7 +611,7 @@ class Base
             $bytes /= 1024;
             $i++;
         }
-        return round($bytes, 2) . ' Base.php' . $sizes[$i];
+        return round($bytes, 2) . ' ' . $sizes[$i];
     }
 
 
