@@ -2,7 +2,7 @@
 
 namespace Antmin\Http\Repositories;
 
-use Base;
+use Antmin\Common\Base;
 use Antmin\Models\RequestLog as Model;
 use Antmin\Http\Resources\RequestLogResource;
 use Illuminate\Support\Facades\Redis;
