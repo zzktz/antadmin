@@ -56,8 +56,11 @@ class RequestLogRedis
      */
     public static function addStorage(array $data): void
     {
-        $key = self::getStatKey() . '_store_' . date('m');
-        Redis::lpush($key, json_encode($data));
+        $isOpen = env('APP_DEBUG');
+        if ($isOpen) {
+            $key = self::getStatKey() . '_store_' . date('m');
+            Redis::lpush($key, json_encode($data));
+        }
     }
 
     /**

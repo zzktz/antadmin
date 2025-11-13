@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class RequestLog extends Model
 {
-    protected $connection = 'admin';
+    protected $connection = 'log';
     protected $table = 'app_request_log';
     protected $guarded = [];
 
