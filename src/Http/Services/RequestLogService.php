@@ -69,8 +69,6 @@ class RequestLogService
         }
         # 存储
         $logStorage = config('antmin.logStorage');
-        info($logStorage);
-        info($data);
         if ($logStorage == 'rabbitmq') {
             RequestLogQueue::addStorage($data);
         } else {
@@ -127,7 +125,9 @@ class RequestLogService
      */
     protected static function getRequestUrl(array $arr): string
     {
-        return removeUrls($arr['url'] ?? '');
+        $url = $arr['url'] ?? '';
+        $str = parse_url($url);
+        return $str['path'] ?? '';
     }
 
     /**
