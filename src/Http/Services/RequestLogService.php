@@ -108,9 +108,6 @@ class RequestLogService
             'url'              => self::getRequestUrl($arr),
             'client'           => $arr['client'] ?? '',
             'method'           => $arr['method'] ?? '',
-            'action'           => $arr['params']['action'] ?? '',
-            'systemType'       => $arr['params']['systemType'] ?? '',
-            'envVersion'       => $arr['params']['envVersion'] ?? '',
             'header'           => $arr['header'] ?? '',
             'params'           => $paramJson,
             'query_log'        => $queryLogJson, # 添加查询日志到记录数据
