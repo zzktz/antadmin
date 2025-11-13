@@ -98,7 +98,6 @@ class RequestLogService
     protected static function prepareLogData(array $arr): array
     {
         $params       = self::filterParams($arr['params'] ?? []);
-        $paramJson    = self::formatParams($params);
         $queryLogJson = self::formatParams($arr['query_log']);
 
         return [
@@ -109,7 +108,7 @@ class RequestLogService
             'client'           => $arr['client'] ?? '',
             'method'           => $arr['method'] ?? '',
             'header'           => $arr['header'] ?? '',
-            'params'           => $paramJson,
+            'params'           => $params,
             'query_log'        => $queryLogJson, # 添加查询日志到记录数据
             'response_status'  => $arr['response_status'] ?? 0,
             'response_content' => self::getResponseContent($arr),
