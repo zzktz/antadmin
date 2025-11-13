@@ -7,6 +7,7 @@ use Antmin\Jobs\LogRequestJob;
 use Illuminate\Support\Facades\Redis;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Exception\AMQPConnectionClosedException;
+use Exception;
 
 class RequestLogQueue
 {

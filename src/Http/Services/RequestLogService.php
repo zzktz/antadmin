@@ -69,6 +69,8 @@ class RequestLogService
         }
         # 存储
         $logStorage = config('antmin.logStorage');
+        info($logStorage);
+        info($data);
         if ($logStorage == 'rabbitmq') {
             RequestLogQueue::addStorage($data);
         } else {
