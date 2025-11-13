@@ -16,29 +16,19 @@ class RequestLogQueue
     public static string $queueName = 'log_request';
 
 
-    public static function getList(int $limit, $search = [])
+    public static function getList(int $limit, $search = []): array
     {
         return RequestLogRepository::getList($limit, $search);
     }
 
 
-    public static function getConfig(): array
-    {
-        return [
-            'host'     => env('RABBITMQ_HOST', ''),
-            'port'     => env('RABBITMQ_PORT', ''),
-            'user'     => env('RABBITMQ_USER', ''),
-            'password' => env('RABBITMQ_PASSWORD', ''),
-        ];
-    }
-
     public static function addStorage(array $data): void
     {
         # 加入队列
         try {
-            LogRequestJob::dispatchWithCustomConnection($data);
+            LogRequestJob::dispatch($data)->onQueue(self::$queueName);
         } catch (Exception $e) {
-            info($e->getMessage());
+            info($e->getMessage(), $e->getTrace());
             return;
         }
     }
@@ -71,14 +61,11 @@ class RequestLogQueue
      */
     public static function getRabbitMQQueueCount($queueName)
     {
-
-        $config = self::getConfig();
-
         # RabbitMQ 的连接配置
-        $host     = $config['host'];
-        $port     = $config['port'];
-        $user     = $config['user'];
-        $password = $config['password'];
+        $host     = env('RABBITMQ_HOST', '');
+        $port     = env('RABBITMQ_PORT', '');
+        $user     = env('RABBITMQ_USER', '');
+        $password = env('RABBITMQ_PASSWORD', '');
 
         try {
             # 创建连接
