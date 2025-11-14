@@ -2,18 +2,18 @@ name: Automated Releases
 
 on:
   push:
-    branches: [ master ] # 指定触发分支
+    branches: [ master ]
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 赋予创建发行版和标签的权限
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取所有历史记录，以便准确计数
+          fetch-depth: 0
 
       - name: Calculate next version
         id: versioning
@@ -37,13 +37,10 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: actions/github-script@v7 # 使用 GitHub Script Action 来创建发行版
+        uses: softprops/action-gh-release@v1
         with:
-          script: |
-            github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: `${{ steps.versioning.outputs.new_tag }}`,
-              name: `Release ${{ steps.versioning.outputs.new_tag }}`,
-              generate_release_notes: true, # 自动生成发布说明
-            })
+          tag_name: ${{ steps.versioning.outputs.new_tag }}
+          name: Release ${{ steps.versioning.outputs.new_tag }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
