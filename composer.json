@@ -24,11 +24,6 @@
   "scripts": {
   },
   "extra": {
-    "laravel": {
-      "providers": [
-        "Antmin\\Providers\\ServiceProvider::class"
-      ]
-    }
   },
   "config": {
   },
