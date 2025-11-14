@@ -662,7 +662,7 @@ class Base
                 $providersContent = $matches[1];
 
                 # 在 providers 数组末尾添加新的服务提供者
-                $newProviderLine = "\n        " . $provider . ",";
+                $newProviderLine = "\n        " . $provider . ",\n ";
 
                 # 检查最后一个字符是否是 ]，如果是则在之前添加
                 if (strpos(trim($providersContent), ']') === strlen(trim($providersContent)) - 1) {
@@ -687,7 +687,7 @@ class Base
             }
 
         } catch (\Exception $e) {
-            echo "❌ ".$e->getMessage();
+            echo "❌ " . $e->getMessage();
             return;
         }
     }
