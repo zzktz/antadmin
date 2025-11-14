@@ -23,7 +23,7 @@
   },
   "scripts": {
     "post-autoload-dump": [
-      "@php artisan vendor:publish --provider=\"Antmin\\Providers\\ServiceProvider\" --tag=admin-config"
+      "@php -r \"if (file_exists('artisan')) { passthru('php artisan antmin:merge-config'); }\""
     ]
   },
   "extra": {
