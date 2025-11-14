@@ -3,9 +3,9 @@
 return [
 
 
-    'name'       => 'Ant Admin',
-    'logStorage' => 'redis',
-
+    'name'        => 'Ant Admin',
+    'logStorage'  => 'redis',
+    'test'        => 'test',
     'connections' => [
         'admin' => [
             'driver'         => 'mysql',
