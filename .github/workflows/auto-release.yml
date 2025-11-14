@@ -9,24 +9,42 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
       - name: Calculate next version
         id: versioning
         run: |
-          # 获取当前最新的版本标签，如果没有则假设为 v1.0.0
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          # 获取所有标签并按版本号排序
+          git fetch --tags -f
+          
+          # 获取最新的版本标签，如果没有则假设为 v1.0.0
+          LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n 1 || echo "v1.0.0")
           echo "Latest tag: $LATEST_TAG"
           
           # 从标签中提取主版本和次版本号 (例如：v1.0.10 -> 1.0)
-          VERSION_BASE=$(echo "$LATEST_TAG" | sed 's/^v//' | sed 's/\.[^.]*$//')
+          if [ "$LATEST_TAG" = "v1.0.0" ]; then
+            VERSION_BASE="1.0"
+          else
+            VERSION_BASE=$(echo "$LATEST_TAG" | sed 's/^v//' | sed 's/\.[^.]*$//')
+          fi
           
-          # 计算仓库的总提交次数
-          COMMIT_COUNT=$(git rev-list --count HEAD)
+          # 计算从上一个标签到现在的提交次数，如果没有上一个标签则使用总提交次数
+          if [ "$LATEST_TAG" != "v1.0.0" ]; then
+            COMMIT_COUNT=$(git rev-list --count $LATEST_TAG..HEAD)
+          else
+            COMMIT_COUNT=$(git rev-list --count HEAD)
+          fi
           
           # 组合成新的版本号，例如 1.0.11
           NEW_VERSION="$VERSION_BASE.$COMMIT_COUNT"
@@ -35,6 +53,45 @@ jobs:
           echo "New tag: $NEW_TAG"
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "previous_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Delete previous release and tag
+        if: steps.versioning.outputs.previous_tag != 'v1.0.0'
+        run: |
+          PREVIOUS_TAG="${{ steps.versioning.outputs.previous_tag }}"
+          echo "Deleting previous release and tag: $PREVIOUS_TAG"
+          
+          # 删除本地 tag
+          git tag -d $PREVIOUS_TAG || true
+          
+          # 删除远程 tag
+          git push origin :refs/tags/$PREVIOUS_TAG || true
+          
+          # 尝试删除对应的 release (通过 GitHub API)
+          RELEASE_ID=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$PREVIOUS_TAG" | jq -r '.id')
+          
+          if [ "$RELEASE_ID" != "null" ] && [ ! -z "$RELEASE_ID" ]; then
+            echo "Deleting release with ID: $RELEASE_ID"
+            curl -s -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+            echo "Previous release deleted successfully"
+          else
+            echo "No previous release found to delete"
+          fi
+
+      - name: Create and push new tag
+        run: |
+          NEW_TAG="${{ steps.versioning.outputs.new_tag }}"
+          echo "Creating and pushing new tag: $NEW_TAG"
+          
+          # 创建新标签
+          git tag $NEW_TAG
+          
+          # 推送新标签到远程
+          git push origin $NEW_TAG
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -42,5 +99,38 @@ jobs:
           tag_name: ${{ steps.versioning.outputs.new_tag }}
           name: Release ${{ steps.versioning.outputs.new_tag }}
           generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup old releases (keep only latest 3)
+        run: |
+          # 获取所有 releases 按创建时间排序，保留最新的5个
+          RELEASES_JSON=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100")
+          
+          # 提取所有 release ID 和对应的 tag
+          echo "$RELEASES_JSON" | jq -r '.[] | "\(.id) \(.tag_name)"' > releases.txt
+          
+          # 跳过最新的5个，删除其余的
+          tail -n +4 releases.txt | while read line; do
+            RELEASE_ID=$(echo $line | awk '{print $1}')
+            TAG_NAME=$(echo $line | awk '{print $2}')
+          
+            if [ ! -z "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
+              echo "Deleting old release: $TAG_NAME (ID: $RELEASE_ID)"
+          
+              # 删除 release
+              curl -s -X DELETE \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+          
+              # 删除对应的 tag
+              git push origin :refs/tags/$TAG_NAME || true
+            fi
+          done
+          
+          # 清理临时文件
+          rm -f releases.txt
