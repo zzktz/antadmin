@@ -11,18 +11,19 @@ class ServiceProvider extends BaseServiceProvider
 {
     public function register()
     {
-        # 在这里进行依赖注入绑定
-        # 例如：$this->app->bind('your-package', fn() => new YourPackage);
+        // 注册配置为单例
+        $this->app->singleton('antmin.config', function () {
+            return config('antmin.connections', []);
+        });
     }
 
     public function boot()
     {
         # 例如：加载路由、发布数据库迁移、发布配置文件等
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__ . '/../config/antmin.php' => config_path('antmin.php'),
-            ], 'antmin-config');
-        }
+
+        $this->publishes([
+            __DIR__ . '/../config/antmin.php' => config_path('antmin.php'),
+        ], 'antmin-config');
 
         # 加载路由
         $this->loadRoutesFrom(__DIR__ . '/../Config/Route.php');
@@ -30,7 +31,18 @@ class ServiceProvider extends BaseServiceProvider
         # 注册包的中间件
         $this->app['router']->aliasMiddleware('antAuth', Middleware::class);
 
+        // 动态注册数据库连接
+        $this->registerDatabaseConnections();
     }
 
-
+    /**
+     * 注册数据库连接
+     */
+    protected function registerDatabaseConnections(): void
+    {
+        $connections = $this->app->make('antmin.config');
+        foreach ($connections as $name => $config) {
+            config(["database.connections.{$name}" => $config]);
+        }
+    }
 }
