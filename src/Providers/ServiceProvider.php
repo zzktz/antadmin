@@ -3,7 +3,7 @@
 namespace Antmin\Providers;
 
 use Antmin\Middleware\Middleware;
-
+use Antmin\Common\Base;
 
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 
@@ -37,6 +37,8 @@ class ServiceProvider extends BaseServiceProvider
         if ($this->app->runningInConsole()) {
             # 执行合并命令
             self::mergeConfigDirectly();
+            # 追加服务
+            Base::addServiceProviderToConfig('Antmin\Providers\ServiceProvider::class');
         }
 
     }
