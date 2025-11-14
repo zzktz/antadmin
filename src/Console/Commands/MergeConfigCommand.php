@@ -25,6 +25,11 @@ class MergeConfigCommand extends Command
         $packageConfigPath = __DIR__ . '/../../../config/antmin.php';
         $targetConfigPath  = config_path('antmin.php');
 
+        \Log::info('------执行了-开始智能合并 Antmin 配置---');
+        \Log::info($packageConfigPath);
+        \Log::info($targetConfigPath);
+
+
         $this->info('开始智能合并 Antmin 配置...');
 
         if (ServiceProvider::mergeConfigFile($packageConfigPath, $targetConfigPath)) {

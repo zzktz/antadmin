@@ -4,6 +4,8 @@ namespace Antmin\Providers;
 
 use Illuminate\Support\Facades\File;
 use Antmin\Middleware\Middleware;
+use Antmin\Console\Commands\MergeConfigCommand;
+
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 
 class ServiceProvider extends BaseServiceProvider
@@ -35,7 +37,7 @@ class ServiceProvider extends BaseServiceProvider
         # 注册自定义 Artisan 命令
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \Antmin\Console\Commands\MergeConfigCommand::class,
+                MergeConfigCommand::class,
             ]);
             \Log::info('------执行了--MergeConfigCommand---');
         }
