@@ -27,6 +27,11 @@
     ]
   },
   "extra": {
+    "laravel": {
+      "providers": [
+        "Antmin\\Providers\\ServiceProvider"
+      ]
+    }
   },
   "config": {
   },

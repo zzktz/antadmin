@@ -22,7 +22,7 @@ class ServiceProvider extends BaseServiceProvider
 
     public function boot()
     {
-        # 例如：加载路由、发布数据库迁移、发布配置文件等
+
 
         # 声明配置文件是可发布的
         $this->publishes([
