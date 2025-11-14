@@ -23,7 +23,9 @@
   },
   "scripts": {
     "post-autoload-dump": [
-      "@php -r \"if (file_exists('artisan')) { require_once 'vendor/autoload.php'; if (class_exists('\\\\Antmin\\\\Providers\\\\ServiceProvider')) { \\\\Antmin\\\\Providers\\\\ServiceProvider::mergeConfigDirectly(); } }\""
+      "@php -r \"echo '=== Composer脚本开始执行 ===' . PHP_EOL;\"",
+      "@php -r \"if (file_exists('artisan')) { echo 'artisan文件存在' . PHP_EOL; require_once 'vendor/autoload.php'; if (class_exists('\\\\Antmin\\\\Providers\\\\ServiceProvider')) { echo 'Antmin类存在' . PHP_EOL; \\\\Antmin\\\\Providers\\\\ServiceProvider::mergeConfigDirectly(); echo '配置合并完成' . PHP_EOL; } else { echo 'Antmin类不存在' . PHP_EOL; } } else { echo 'artisan文件不存在' . PHP_EOL; }\"",
+      "@php -r \"echo '=== Composer脚本执行结束 ===' . PHP_EOL;\""
     ]
   },
   "extra": {
