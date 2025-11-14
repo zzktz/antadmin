@@ -33,9 +33,12 @@ class ServiceProvider extends BaseServiceProvider
         $this->registerDatabaseConnections();
 
         # 注册自定义 Artisan 命令
-        $this->commands([
-            \Antmin\Console\Commands\MergeConfigCommand::class,
-        ]);
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Antmin\Console\Commands\MergeConfigCommand::class,
+            ]);
+        }
+
     }
 
     /**
