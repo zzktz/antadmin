@@ -22,6 +22,9 @@
   "autoload-dev": {
   },
   "scripts": {
+    "post-autoload-dump": [
+      "@php artisan vendor:publish --provider=\"Antmin\\Providers\\ServiceProvider\" --tag=admin-config"
+    ]
   },
   "extra": {
   },

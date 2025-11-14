@@ -11,16 +11,20 @@ class ServiceProvider extends BaseServiceProvider
 {
     public function register()
     {
+
         // 注册配置为单例
         $this->app->singleton('antmin.config', function () {
             return config('antmin.connections', []);
         });
+
+
     }
 
     public function boot()
     {
         # 例如：加载路由、发布数据库迁移、发布配置文件等
 
+        # 声明配置文件是可发布的
         $this->publishes([
             __DIR__ . '/../config/antmin.php' => config_path('antmin.php'),
         ], 'antmin-config');
@@ -31,7 +35,7 @@ class ServiceProvider extends BaseServiceProvider
         # 注册包的中间件
         $this->app['router']->aliasMiddleware('antAuth', Middleware::class);
 
-        // 动态注册数据库连接
+        # 动态注册数据库连接
         $this->registerDatabaseConnections();
     }
 
