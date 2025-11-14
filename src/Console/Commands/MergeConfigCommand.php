@@ -23,7 +23,7 @@ class MergeConfigCommand extends Command
      */
     public function handle()
     {
-        $packageConfigPath = __DIR__ . '/../../../../config/antmin.php';
+        $packageConfigPath = __DIR__ . '/../../../config/antmin.php';
         $targetConfigPath  = config_path('antmin.php');
 
         $this->info('开始智能合并 Antmin 配置...');
