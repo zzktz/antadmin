@@ -17,6 +17,12 @@ class MergeConfigCommand extends Command
      */
     protected $description = '智能合并 Antmin 包配置';
 
+    public function __construct()
+    {
+        parent::__construct();
+        \Log::info('------PublishConfigCommand 构造函数执行---');
+    }
+
     /**
      * 执行命令
      */
@@ -25,10 +31,7 @@ class MergeConfigCommand extends Command
         $packageConfigPath = __DIR__ . '/../../../config/antmin.php';
         $targetConfigPath  = config_path('antmin.php');
 
-        \Log::info('------执行了-开始智能合并 Antmin 配置---');
-        \Log::info($packageConfigPath);
-        \Log::info($targetConfigPath);
-
+        \Log::info('------PublishConfigCommand handle方法开始执行---');
 
         $this->info('开始智能合并 Antmin 配置...');
 
@@ -38,5 +41,7 @@ class MergeConfigCommand extends Command
         } else {
             $this->error('❌ 配置合并失败！');
         }
+
+        \Log::info('------PublishConfigCommand handle方法执行结束---');
     }
 }

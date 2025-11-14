@@ -12,6 +12,7 @@ class ServiceProvider extends BaseServiceProvider
 {
     public function register()
     {
+        \Log::info('------ServiceProvider register方法执行---');
         # 注册配置为单例
         $this->app->singleton('antmin.config', function () {
             return config('antmin.connections', []);
@@ -36,10 +37,11 @@ class ServiceProvider extends BaseServiceProvider
 
         # 注册自定义 Artisan 命令
         if ($this->app->runningInConsole()) {
+            \Log::info('------ServiceProvider boot方法执行---');
             $this->commands([
                 MergeConfigCommand::class,
             ]);
-            \Log::info('------执行了--MergeConfigCommand---');
+            \Log::info('------命令注册完成---');
         }
 
     }
