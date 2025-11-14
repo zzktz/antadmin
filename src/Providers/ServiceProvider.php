@@ -2,7 +2,6 @@
 
 namespace Antmin\Providers;
 
-use Illuminate\Support\Facades\File;
 use Antmin\Middleware\Middleware;
 
 
@@ -54,8 +53,7 @@ class ServiceProvider extends BaseServiceProvider
     }
 
     /**
-     * 直接合并配置（供 Composer 脚本调用）
-     * 这个方法不依赖 Laravel 容器，可以在 Composer post-autoload-dump 时执行
+     * 直接合并配置
      */
     public static function mergeConfigDirectly(): void
     {
@@ -104,38 +102,6 @@ class ServiceProvider extends BaseServiceProvider
         }
     }
 
-    /**
-     * 智能合并配置文件的实现（供 Artisan 命令使用）
-     */
-    public static function mergeConfigFile(string $packageConfigPath, string $targetConfigPath): bool
-    {
-        if (!File::exists($packageConfigPath)) {
-            return false;
-        }
-
-        # 读取包中的默认配置
-        $defaultConfig = require $packageConfigPath;
-
-        # 如果目标文件不存在，直接复制
-        if (!File::exists($targetConfigPath)) {
-            return File::copy($packageConfigPath, $targetConfigPath);
-        }
-
-        # 读取现有的用户配置
-        $userConfig = require $targetConfigPath;
-
-        # 深度合并配置
-        $mergedConfig = self::arrayMergeRecursiveDistinct($defaultConfig, $userConfig);
-
-        # 生成新的配置文件内容
-        $configContent = "<?php\n\nreturn " . var_export($mergedConfig, true) . ";\n";
-
-        # 格式化 PHP 代码
-        $configContent = self::formatConfigContent($configContent);
-
-        # 写入合并后的配置
-        return File::put($targetConfigPath, $configContent) !== false;
-    }
 
     /**
      * 深度合并数组（保留用户配置的优先级）
