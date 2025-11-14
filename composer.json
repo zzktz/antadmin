@@ -23,7 +23,7 @@
   },
   "scripts": {
     "post-autoload-dump": [
-      "@php -r \"if (file_exists('artisan')) { require_once 'vendor/autoload.php'; if (class_exists('\\Antmin\\Providers\\ServiceProvider')) { \\Antmin\\Providers\\ServiceProvider::mergeConfigDirectly(); } else { echo '⚠️ Antmin 服务提供者未加载\\n'; } }\""
+      "@php -r \"if (file_exists('artisan')) { require_once 'vendor/autoload.php'; \\Antmin\\Providers\\ServiceProvider::mergeConfigDirectly(); }\""
     ]
   },
   "extra": {
