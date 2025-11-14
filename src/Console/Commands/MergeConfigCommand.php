@@ -10,8 +10,7 @@ class MergeConfigCommand extends Command
     /**
      * 命令名称和签名
      */
-    protected $signature = 'antmin:merge-config 
-                            {--force : 强制合并，即使配置相同也更新}';
+    protected $signature = 'antmin:merge-config  {--force : 强制合并，即使配置相同也更新}';
 
     /**
      * 命令描述
