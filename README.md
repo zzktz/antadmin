@@ -1,1 +1,1 @@
-antmin demo OK
+antmin demo 1.0
