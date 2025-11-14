@@ -37,6 +37,7 @@ class ServiceProvider extends BaseServiceProvider
             $this->commands([
                 \Antmin\Console\Commands\MergeConfigCommand::class,
             ]);
+            \Log::info('------执行了--MergeConfigCommand---');
         }
 
     }
