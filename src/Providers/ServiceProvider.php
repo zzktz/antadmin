@@ -160,4 +160,6 @@ class ServiceProvider extends BaseServiceProvider
         $content = preg_replace('/=>\s*\[/', '=> [', $content);
         return preg_replace('/(\s+)\[/', "$1[", $content);
     }
+
+
 }
