@@ -675,7 +675,7 @@ class Base
                 $newContent        = str_replace($providersBlock, $newProvidersBlock, $content);
 
                 # 备份原文件
-                File::copy($configPath, $configPath . '.backup_' . date('YmdHis'));
+                # File::copy($configPath, $configPath . '.backup_' . date('YmdHis'));
 
                 # 写入新内容
                 File::put($configPath, $newContent);
