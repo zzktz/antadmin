@@ -2,7 +2,7 @@
 
 namespace Antmin\Providers;
 
-
+use Illuminate\Support\Facades\File;
 use Antmin\Middleware\Middleware;
 
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
