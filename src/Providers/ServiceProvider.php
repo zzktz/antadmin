@@ -12,7 +12,7 @@ class ServiceProvider extends BaseServiceProvider
     public function register()
     {
 
-        // 注册配置为单例
+        # 注册配置为单例
         $this->app->singleton('antmin.config', function () {
             return config('antmin.connections', []);
         });
@@ -65,27 +65,27 @@ class ServiceProvider extends BaseServiceProvider
             return false;
         }
 
-        // 读取包中的默认配置
+        # 读取包中的默认配置
         $defaultConfig = require $packageConfigPath;
 
-        // 如果目标文件不存在，直接复制
+        # 如果目标文件不存在，直接复制
         if (!File::exists($targetConfigPath)) {
             return File::copy($packageConfigPath, $targetConfigPath);
         }
 
-        // 读取现有的用户配置
+        # 读取现有的用户配置
         $userConfig = require $targetConfigPath;
 
-        // 深度合并配置
+        # 深度合并配置
         $mergedConfig = self::arrayMergeRecursiveDistinct($defaultConfig, $userConfig);
 
-        // 生成新的配置文件内容
+        # 生成新的配置文件内容
         $configContent = "<?php\n\nreturn " . var_export($mergedConfig, true) . ";\n";
 
-        // 格式化 PHP 代码
+        # 格式化 PHP 代码
         $configContent = self::formatConfigContent($configContent);
 
-        // 写入合并后的配置
+        # 写入合并后的配置
         return File::put($targetConfigPath, $configContent) !== false;
     }
 
@@ -95,7 +95,6 @@ class ServiceProvider extends BaseServiceProvider
     private static function arrayMergeRecursiveDistinct(array $array1, array $array2): array
     {
         $merged = $array1;
-
         foreach ($array2 as $key => $value) {
             if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
                 $merged[$key] = self::arrayMergeRecursiveDistinct($merged[$key], $value);
@@ -103,7 +102,6 @@ class ServiceProvider extends BaseServiceProvider
                 $merged[$key] = $value;
             }
         }
-
         return $merged;
     }
 
@@ -112,13 +110,11 @@ class ServiceProvider extends BaseServiceProvider
      */
     private static function formatConfigContent(string $content): string
     {
-        // 美化数组格式
+        # 美化数组格式
         $content = preg_replace('/array \(/', '[', $content);
         $content = preg_replace('/\)/', ']', $content);
         $content = preg_replace('/=>\s*\[/', '=> [', $content);
-        $content = preg_replace('/(\s+)\[/', "$1[", $content);
-
-        return $content;
+        return preg_replace('/(\s+)\[/', "$1[", $content);
     }
 
 
