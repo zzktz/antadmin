@@ -5,6 +5,7 @@
 
 namespace Antmin\Common;
 
+use Exception;
 use Validator;
 use Antmin\Exceptions\CommonException;
 use Illuminate\Http\JsonResponse;
@@ -635,7 +636,7 @@ class Base
 
         # 检查配置文件是否存在
         if (!File::exists($configPath)) {
-            echo "❌ 配置文件 config/app.php 不存在";
+            echo "❌ 配置文件 config/app.php 不存在\n";
             return;
         }
 
@@ -646,12 +647,13 @@ class Base
 
             # 检查是否已存在该服务提供者
             if (isset($config['providers']) && is_array($config['providers'])) {
-                if (in_array($provider, $config['providers'])) {
-                    echo "✅ Antmin 服务提供者已存在，无需添加";
+                $_provider = str_replace('::class', '', $provider);
+                if (in_array($_provider, $config['providers'])) {
+                    echo "✅ Antmin 服务提供者已存在，无需添加\n";
                     return;
                 }
             } else {
-                echo "❌ 配置文件 config/app.php 不存在";
+                echo "❌ 配置文件 config/app.php 不存在\n";
                 return;
             }
 
@@ -679,14 +681,14 @@ class Base
 
                 # 写入新内容
                 File::put($configPath, $newContent);
-                echo "✅ Antmin 成功添加服务提供者到配置文件";
+                echo "✅ Antmin 成功添加服务提供者到配置文件\n";
                 return;
             } else {
-                echo "❌ 未能在配置文件中找到 providers 数组";
+                echo "❌ 未能在配置文件中找到 providers 数组\n";
                 return;
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             echo "❌ " . $e->getMessage();
             return;
         }
