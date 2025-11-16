@@ -1,1 +1,1 @@
-antmin demo 1.0.3aaaa
+antmin demo 1.0.6
