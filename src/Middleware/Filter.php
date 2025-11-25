@@ -12,6 +12,7 @@ class Filter
     {
         return [
             'systemLogin',
+            'systemUploadEditor',
         ];
     }
 
