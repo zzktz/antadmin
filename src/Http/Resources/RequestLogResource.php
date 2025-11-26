@@ -88,6 +88,7 @@ class RequestLogResource
 
             $rest[$k] = [
                 'id'              => $v['uuid'] ?? '',
+                'uuid'            => $v['uuid'] ?? '',
                 'url'             => $v['url'] ?? '',
                 'header'          => $v['header'] ?? '',
                 'request_at'      => $v['request_at'] ?? '',
@@ -102,7 +103,7 @@ class RequestLogResource
                 'sqlres'          => $queryLog,
                 'is_expand'       => false,
                 'content'         => !empty($v['response_content']) ? json_decode($v['response_content'], true) : [],
-                'paramsarr'       => (!empty($v['params']) && is_string($v['params'])) ? json_decode($v['params'], true) : [],
+                'paramsarr'       => !empty($v['params']) ? json_decode($v['params'], true) : [],
                 # 执行时间
                 'executionTime'   => !empty($v['response_content']) ?
                     (json_decode($v['response_content'], true)['useTime'] ?? '') : '',
