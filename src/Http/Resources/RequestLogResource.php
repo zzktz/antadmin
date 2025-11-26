@@ -22,7 +22,7 @@ class RequestLogResource
             return $res;
         }
 
-        // 辅助函数，给状态码着色
+        # 辅助函数，给状态码着色
         $colorResponseStatus = function ($status) {
             if ($status > 200 && $status < 500) {
                 return Base::tag($status, '#108ee9');
@@ -33,7 +33,7 @@ class RequestLogResource
             return Base::tag($status, '#f50');
         };
 
-        // 辅助函数，给客户端着色
+        # 辅助函数，给客户端着色
         $colorClient = function ($client) {
             switch ($client) {
                 case 'mini':
@@ -46,17 +46,17 @@ class RequestLogResource
             }
         };
 
-        // 辅助函数，app_env 着色
+        # 辅助函数，app_env 着色
         $colorAppEnv = function ($env) {
             return $env === 'dev' ? Base::tag($env, 'orange') : Base::tag($env, 'green');
         };
 
-        // 辅助函数，method 着色
+        # 辅助函数，method 着色
         $colorMethod = function ($method) {
             return $method === 'GET' ? Base::tag($method, 'blue') : Base::tag($method, 'green');
         };
 
-        // 辅助函数，envVersion 着色
+        # 辅助函数，envVersion 着色
         $colorEnvVersion = function ($version) {
             switch ($version) {
                 case 'develop':
@@ -102,13 +102,13 @@ class RequestLogResource
                 'is_expand'       => false,
                 'content'         => !empty($v['response_content']) ? json_decode($v['response_content'], true) : [],
                 'paramsarr'       => (!empty($v['params']) && is_string($v['params'])) ? json_decode($v['params'], true) : [],
-                // 执行时间
+                # 执行时间
                 'executionTime'   => !empty($v['response_content']) ?
-                    (json_decode($v['response_content'], true)['useTime1'] ?? '') : '',
+                    (json_decode($v['response_content'], true)['useTime'] ?? '') : '',
             ];
 
-            // 上面 'executionTime' 依赖 content，优化版为避免重复解析 content：
-            if (!empty($rest[$k]['content']['useTime1'])) {
+            # 上面 'executionTime' 依赖 content，优化版为避免重复解析 content：
+            if (!empty($rest[$k]['content']['useTime'])) {
                 $rest[$k]['executionTime'] = Base::tag($rest[$k]['content']['useTime1'], 'green');
             } else {
                 $rest[$k]['executionTime'] = '';
