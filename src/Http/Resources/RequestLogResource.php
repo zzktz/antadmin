@@ -90,6 +90,7 @@ class RequestLogResource
                 'id'              => $v['uuid'] ?? '',
                 'url'             => $v['url'] ?? '',
                 'header'          => $v['header'] ?? '',
+                'request_at'      => $v['request_at'] ?? '',
                 'client'          => $client,
                 'app_env'         => $app_env,
                 'method'          => $method,
@@ -114,7 +115,6 @@ class RequestLogResource
                 $rest[$k]['executionTime'] = '';
             }
         }
-
         unset($res['data']);
         $res['data'] = $rest;
         return $res;
