@@ -109,7 +109,7 @@ class RequestLogResource
 
             # 上面 'executionTime' 依赖 content，优化版为避免重复解析 content：
             if (!empty($rest[$k]['content']['useTime'])) {
-                $rest[$k]['executionTime'] = Base::tag($rest[$k]['content']['useTime1'], 'green');
+                $rest[$k]['executionTime'] = Base::tag($rest[$k]['content']['useTime'], 'green');
             } else {
                 $rest[$k]['executionTime'] = '';
             }
