@@ -5,7 +5,7 @@
 
 namespace Antmin\Http\Controllers;
 
-use App\Common\Base;
+use Antmin\Common\Base;
 use Antmin\Http\Services\OperateLogService;
 use Illuminate\Http\Request;
 
