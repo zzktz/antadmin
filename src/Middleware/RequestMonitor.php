@@ -12,7 +12,6 @@ class RequestMonitor
 {
     public static function handle($request, Closure $next)
     {
-        //info('sssss11111');
         # 获取请求的参数和地址
         $url    = $request->fullUrl();
         $params = $request->all();
