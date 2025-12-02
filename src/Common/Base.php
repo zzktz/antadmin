@@ -5,11 +5,10 @@
 
 namespace Antmin\Common;
 
-use Exception;
 use Validator;
 use Antmin\Exceptions\CommonException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\File;
+
 
 class Base
 {
@@ -17,7 +16,6 @@ class Base
 
     public static function errJson(string $msg, array $data = [], int $code = 0): JsonResponse
     {
-        $res['useTime1'] = self::getUseTime();
         $res['status']   = "fail";
         $res['code']     = $code;
         $res['message']  = $msg;
@@ -27,8 +25,6 @@ class Base
 
     public static function sucJson(string $msg, array $data = [], int $code = 0): JsonResponse
     {
-
-        $res['useTime1'] = self::getUseTime();
         $res['status']   = "success";
         $res['code']     = $code;
         $res['message']  = $msg;
@@ -36,14 +32,6 @@ class Base
         return response()->json($res)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
     }
 
-    public static function getUseTime(): string
-    {
-        # 记录请求结束时间
-        $endTime = microtime(true);
-        # 计算请求执行时间
-        $executionTime = $endTime - LARAVEL_START;
-        return intval($executionTime * 1000) . ' ms';
-    }
 
     public static function isMobile(string $mobile): bool
     {
@@ -380,7 +368,7 @@ class Base
         ];
         # 检查是否是有效的 URL
         foreach ($validPrefixes as $prefix) {
-            if (strpos($str, $prefix) === 0) {
+            if (str_starts_with($str, $prefix)) {
                 return $str;
             }
         }
@@ -440,7 +428,7 @@ class Base
             $str  = strtolower($str);
             $find = strtolower($find);
         }
-        return (substr($str, 0, strlen($find)) == $find);
+        return (str_starts_with($str, $find));
     }
 
 
@@ -623,75 +611,5 @@ class Base
         return preg_match('/^[a-f0-9]{32}$/i', $string) === 1;
     }
 
-
-    /**
-     * 向 config/app.php 的 providers 数组添加服务提供者
-     *
-     * @param string $provider 要添加的服务提供者类名
-     * @return void
-     */
-    public static function addServiceProviderToConfig(string $provider): void
-    {
-        $configPath = config_path('app.php');
-
-        # 检查配置文件是否存在
-        if (!File::exists($configPath)) {
-            echo "❌ 配置文件 config/app.php 不存在\n";
-            return;
-        }
-
-        try {
-            # 读取配置文件内容
-            $content = File::get($configPath);
-            $config  = require $configPath;
-
-            # 检查是否已存在该服务提供者
-            if (isset($config['providers']) && is_array($config['providers'])) {
-                $_provider = str_replace('::class', '', $provider);
-                if (in_array($_provider, $config['providers'])) {
-                    echo "✅ Antmin 服务提供者已存在，无需添加\n";
-                    return;
-                }
-            } else {
-                echo "❌ 配置文件 config/app.php 不存在\n";
-                return;
-            }
-
-            # 查找 providers 数组在文件中的位置
-            $pattern = "/'providers' => \[(.*?)\],/s";
-            if (preg_match($pattern, $content, $matches)) {
-                $providersBlock   = $matches[0];
-                $providersContent = $matches[1];
-
-                # 在 providers 数组末尾添加新的服务提供者
-                $newProviderLine = "\n        " . $provider . ",\n ";
-
-                # 检查最后一个字符是否是 ]，如果是则在之前添加
-                if (strpos(trim($providersContent), ']') === strlen(trim($providersContent)) - 1) {
-                    $newProvidersContent = substr(trim($providersContent), 0, -1) . $newProviderLine . "\n    ]";
-                } else {
-                    $newProvidersContent = $providersContent . $newProviderLine;
-                }
-
-                $newProvidersBlock = str_replace($providersContent, $newProvidersContent, $providersBlock);
-                $newContent        = str_replace($providersBlock, $newProvidersBlock, $content);
-
-                # 备份原文件
-                # File::copy($configPath, $configPath . '.backup_' . date('YmdHis'));
-
-                # 写入新内容
-                File::put($configPath, $newContent);
-                echo "✅ Antmin 成功添加服务提供者到配置文件\n";
-                return;
-            } else {
-                echo "❌ 未能在配置文件中找到 providers 数组\n";
-                return;
-            }
-
-        } catch (Exception $e) {
-            echo "❌ " . $e->getMessage();
-            return;
-        }
-    }
 
 }

@@ -4,7 +4,6 @@ namespace Antmin\Providers;
 
 use Antmin\Middleware\Middleware;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
-use Illuminate\Contracts\Routing\Registrar as Router;
 
 class ServiceProvider extends BaseServiceProvider
 {
