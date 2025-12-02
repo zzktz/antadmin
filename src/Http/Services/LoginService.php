@@ -44,7 +44,7 @@ class LoginService
             if (!Hash::check($password, $_password)) {
                 throw new CommonException('账户或密码错误');
             }
-            throw new CommonException('111111');
+            //throw new CommonException('111111');
             $token = TokenRepository::getTokenById($accountId);
             throw new CommonException('22222');
             # 成功
