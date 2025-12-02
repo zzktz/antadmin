@@ -15,22 +15,22 @@ class Base
 
     public static function errJson(string $msg, array $data = [], int $code = 0): JsonResponse
     {
-        $res['useTime1'] = self::getUseTime();
-        $res['status']   = "fail";
-        $res['code']     = $code;
-        $res['message']  = $msg;
-        $res['data']     = $data;
+        $res['useTime'] = self::getUseTime();
+        $res['status']  = "fail";
+        $res['code']    = $code;
+        $res['message'] = $msg;
+        $res['data']    = $data;
         return response()->json($res)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
     }
 
     public static function sucJson(string $msg, array $data = [], int $code = 0): JsonResponse
     {
 
-        $res['useTime1'] = self::getUseTime();
-        $res['status']   = "success";
-        $res['code']     = $code;
-        $res['message']  = $msg;
-        $res['data']     = $data;
+        $res['useTime'] = self::getUseTime();
+        $res['status']  = "success";
+        $res['code']    = $code;
+        $res['message'] = $msg;
+        $res['data']    = $data;
         return response()->json($res)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
     }
 

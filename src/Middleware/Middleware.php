@@ -45,7 +45,7 @@ class Middleware
     {
         # 如果字符串以 'api' 开头，按 '/' 分割并获取第二部分
         $parts = explode('/', $path);
-        if (strpos($path, 'api') === 0) {
+        if (str_starts_with($path, 'api')) {
             $result = $parts[2] ?? '';
         }
         if (empty($result)) {
