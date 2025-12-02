@@ -2,7 +2,7 @@ name: Automated Releases
 
 on:
   push:
-    branches: [ master ]
+    branches: [ 2.0 ]
 
 jobs:
   release:
@@ -28,25 +28,31 @@ jobs:
           # 获取所有标签并按版本号排序
           git fetch --tags -f
           
-          # 获取最新的版本标签
-          LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n 1 || echo "")
+          # 只获取 2.0.x 系列的标签
+          LATEST_2_0_TAG=$(git tag -l "v2.0.*" --sort=-version:refname | head -n 1 || echo "")
           
-          # 如果没有标签，从 v1.0.60 开始
-          if [ -z "$LATEST_TAG" ]; then
-            LATEST_TAG="v1.0.59"
-            echo "No existing tags found, starting from v1.0.60"
+          # 如果没有 2.0.x 标签，从 v2.0.0 开始
+          if [ -z "$LATEST_2_0_TAG" ]; then
+            LATEST_TAG="v2.0.0"
+            echo "No existing 2.0.x tags found, starting from v2.0.0"
+          
+            # 设置初始版本号
+            MAJOR=2
+            MINOR=0
+            PATCH=0
+          else
+            LATEST_TAG="$LATEST_2_0_TAG"
+            echo "Latest 2.0.x tag: $LATEST_TAG"
+          
+            # 从标签中提取版本号 (例如：v2.0.60 -> 2.0.60)
+            CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
+          
+            # 分割版本号
+            IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+            MAJOR=${VERSION_PARTS[0]}
+            MINOR=${VERSION_PARTS[1]}
+            PATCH=${VERSION_PARTS[2]}
           fi
-          
-          echo "Latest tag: $LATEST_TAG"
-          
-          # 从标签中提取版本号 (例如：v1.0.60 -> 1.0.60)
-          CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
-          
-          # 分割版本号
-          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-          PATCH=${VERSION_PARTS[2]}
           
           # 递增修订版本号
           NEW_PATCH=$((PATCH + 1))
@@ -83,12 +89,12 @@ jobs:
               echo "Deleting old release: $TAG_NAME (ID: $RELEASE_ID, Created: $CREATED_AT)"
           
               # 删除 release
-              curl -s -X DELETE \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+              # curl -s -X DELETE \
+              # -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              # "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
           
               # 删除对应的 tag
-              git push origin :refs/tags/$TAG_NAME || echo "Failed to delete tag: $TAG_NAME"
+              # git push origin :refs/tags/$TAG_NAME || echo "Failed to delete tag: $TAG_NAME"
           
               echo "✅ Deleted release and tag: $TAG_NAME"
             fi
