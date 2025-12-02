@@ -39,15 +39,8 @@ class ServiceProvider extends BaseServiceProvider
     protected function loadRoutes(): void
     {
         $routeFile = __DIR__ . '/../Config/Route.php';
-
         if (file_exists($routeFile)) {
-            // 方式1: 使用路由注册器（推荐）
-            $this->app->make('router')->group(function ($router) use ($routeFile) {
-                require $routeFile;
-            });
-
-            // 方式2: 传统方式（也兼容）
-            // require $routeFile;
+            require $routeFile;
         }
     }
 
