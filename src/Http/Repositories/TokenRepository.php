@@ -38,7 +38,7 @@ class TokenRepository
                 throw new CommonException('Token 非法角色');
             }
 
-            # 检查是否作废
+            # SSO 情形下，检查是否有效
             $isHas = self::isTokenExists($token, $id);
             if (!$isHas) {
                 throw new CommonException('超过终端最大许可数，设备下线。');
@@ -77,7 +77,7 @@ class TokenRepository
 
 
     /**
-     * 保存 token 如果是 SSO，需要作废所有现有的 token，并保存新的 token
+     * 保存 token 先进先出 失效token
      * @param string $token
      * @param int $id
      * @return void
@@ -105,7 +105,7 @@ class TokenRepository
     }
 
     /**
-     * 判断 token 是否存在于缓存中
+     * 判断 token 是否存在(有效)
      *
      * @param string $token
      * @param int $id
