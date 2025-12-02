@@ -51,7 +51,7 @@ class RequestMonitor
             RequestLogService::add($arr);
 
             # 在响应中添加额外参数
-            $ins = ['request_uuid' => $uuid];
+            $ins = ['reqUuid' => $uuid];
             $int = $response->getData(true); # 获取数组形式的数据
             $con = array_merge($ins, $int);
             return response()->json($con, $response->status());
