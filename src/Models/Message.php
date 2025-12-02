@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
 {
-    protected $connection = 'admin';
+
 	protected $table = 'system_message';
 	protected $guarded = ['id'];
 	

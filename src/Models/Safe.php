@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Safe extends Model
 {
-    protected $connection = 'admin';
     protected $table = 'system_safe_report';
     protected $guarded = [];
 

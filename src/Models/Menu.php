@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class Menu extends Model
 {
     use CacheTraits;
-    protected $connection = 'admin';
+
     protected $table = 'system_menu';
     protected $guarded = [];
 

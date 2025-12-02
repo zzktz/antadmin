@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class SystemSet extends Model
 {
-    protected $connection = 'admin';
     protected $table = 'system_set';
     protected $guarded = [];
 

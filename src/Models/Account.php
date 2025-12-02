@@ -12,7 +12,6 @@ class Account extends Authenticatable implements JWTSubject
 {
     use Notifiable;
 
-    protected $connection = 'admin';
     protected $table = 'system_account';
     protected $guarded = ['id'];
 

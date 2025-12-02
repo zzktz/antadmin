@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Permission extends Model
 {
-    protected $connection = 'admin';
+
     protected $table = 'system_permission';
     protected $guarded = [];
 

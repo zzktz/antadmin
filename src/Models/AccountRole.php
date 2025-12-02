@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class AccountRole extends Model
 {
-    protected $connection = 'admin';
 	protected $table = 'system_account_role';
 	protected $guarded = [];
 	

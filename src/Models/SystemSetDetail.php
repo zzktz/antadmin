@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SystemSetDetail extends Model
 {
-    protected $connection = 'admin';
+
     protected $table = 'system_set_detail';
     protected $guarded = [];
 

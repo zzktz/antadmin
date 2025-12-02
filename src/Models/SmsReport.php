@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SmsReport extends Model
 {
-    protected $connection = 'admin';
+
     protected $table = 'system_sms_report';
     protected $guarded = [];
 
