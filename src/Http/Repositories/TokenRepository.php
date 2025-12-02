@@ -50,10 +50,6 @@ class TokenRepository
         # 设置过期时间 分钟
         $expireTime = 60 * 24 * 30;
         $accoutInfo = AccountRepository::find($accoutId);
-        # 使用自定义声明生成 token
-        $customClaims = [
-            'ttl' => $expireTime # 在 token 中记录有效期（可选）
-        ];
 
         # 2.0+ 新方式：创建Payload并生成token
         # 获取 claim factory 实例
