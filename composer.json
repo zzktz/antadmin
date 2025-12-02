@@ -3,7 +3,7 @@
   "description": "",
   "license": "MIT",
   "require": {
-    "php": "^8.1",
+    "php": "^8.2",
     "guzzlehttp/guzzle": "^7.0.1",
     "laravel/framework": "^12.00.1",
     "tymon/jwt-auth": "^2.0.0",
