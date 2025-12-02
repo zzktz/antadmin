@@ -2,7 +2,7 @@ name: Automated Releases
 
 on:
   push:
-    branches: [ master ]
+    branches: [ 1.0 ]
 
 jobs:
   release:
