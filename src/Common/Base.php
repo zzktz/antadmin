@@ -9,13 +9,13 @@ use Validator;
 use Antmin\Exceptions\CommonException;
 use Illuminate\Http\JsonResponse;
 
-
 class Base
 {
 
 
     public static function errJson(string $msg, array $data = [], int $code = 0): JsonResponse
     {
+        $res['useTime1'] = self::getUseTime();
         $res['status']   = "fail";
         $res['code']     = $code;
         $res['message']  = $msg;
@@ -25,6 +25,8 @@ class Base
 
     public static function sucJson(string $msg, array $data = [], int $code = 0): JsonResponse
     {
+
+        $res['useTime1'] = self::getUseTime();
         $res['status']   = "success";
         $res['code']     = $code;
         $res['message']  = $msg;
@@ -32,6 +34,14 @@ class Base
         return response()->json($res)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
     }
 
+    public static function getUseTime(): string
+    {
+        # 记录请求结束时间
+        $endTime = microtime(true);
+        # 计算请求执行时间
+        $executionTime = $endTime - request()->server('REQUEST_TIME_FLOAT');
+        return intval($executionTime * 1000) . ' ms';
+    }
 
     public static function isMobile(string $mobile): bool
     {
