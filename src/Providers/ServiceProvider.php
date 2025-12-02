@@ -22,6 +22,9 @@ class ServiceProvider extends BaseServiceProvider
             __DIR__ . '/../../config/antmin.php' => config_path('antmin.php'),
         ], 'antmin-config');
 
+        # 动态注册数据库连接
+        $this->registerDatabaseConnections();
+
         # Laravel 12 推荐的路由加载方式
         $this->app->booted(function () {
             $this->loadRoutes();
@@ -43,6 +46,15 @@ class ServiceProvider extends BaseServiceProvider
         }
     }
 
-
+    /**
+     * 注册数据库连接
+     */
+    protected function registerDatabaseConnections(): void
+    {
+        $connections = $this->app->make('antmin.config');
+        foreach ($connections as $name => $config) {
+            config(["database.connections.{$name}" => $config]);
+        }
+    }
 
 }
