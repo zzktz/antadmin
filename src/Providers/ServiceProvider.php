@@ -36,9 +36,9 @@ class ServiceProvider extends BaseServiceProvider
         # 注册自定义 Artisan 命令
         if ($this->app->runningInConsole()) {
             # 执行合并命令
-            self::mergeConfigDirectly();
+            //self::mergeConfigDirectly();
             # 追加服务
-            Base::addServiceProviderToConfig('Antmin\Providers\ServiceProvider::class');
+            //Base::addServiceProviderToConfig('Antmin\Providers\ServiceProvider::class');
         }
 
     }

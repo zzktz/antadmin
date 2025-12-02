@@ -103,7 +103,7 @@ class RequestLogResource
                 'sqlres'          => $queryLog,
                 'is_expand'       => false,
                 'content'         => !empty($v['response_content']) ? json_decode($v['response_content'], true) : [],
-                'paramsarr'       => $v['params'],//!empty($v['params']) ? json_decode($v['params'], true) : [],
+                'paramsarr'       => $v['params'],
                 # 执行时间
                 'executionTime'   => !empty($v['response_content']) ?
                     (json_decode($v['response_content'], true)['useTime'] ?? '') : '',
