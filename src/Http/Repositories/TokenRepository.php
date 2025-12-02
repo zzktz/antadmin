@@ -10,6 +10,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Claims\Factory as ClaimFactory;
 use Illuminate\Support\Facades\Redis;
 
 class TokenRepository
@@ -51,11 +52,24 @@ class TokenRepository
         $accoutInfo = AccountRepository::find($accoutId);
         # 使用自定义声明生成 token
         $customClaims = [
-            'exp' => now()->addMinutes($expireTime)->timestamp,
             'ttl' => $expireTime # 在 token 中记录有效期（可选）
         ];
+
+        # 2.0+ 新方式：创建Payload并生成token
+        # 获取 claim factory 实例
+        $claimFactory = app(ClaimFactory::class);
+
+        # 构建基础声明（包含 sub, iat, jti 等）并合并自定义声明
+        $claims = $claimFactory->make([
+            'sub' => $accoutInfo->id, # 主题，通常是用户ID
+            'ttl' => $expireTime
+        ]);
+
+        # 显式设置过期时间
+        $claims->set('exp', now()->addMinutes($expireTime)->timestamp);
+
         # 生成 token
-        $token = JWTAuth::customClaims($customClaims)->fromUser($accoutInfo);
+        $token = JWTAuth::encode($claims);
         self::saveTokens($token, $accoutId);
         return $token;
     }
