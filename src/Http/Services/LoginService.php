@@ -80,10 +80,6 @@ class LoginService
     }
 
 
-    public static function accountLogout(): void
-    {
-        //TokenRepository::destroyToken();
-    }
 
 
 }

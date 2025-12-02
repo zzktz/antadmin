@@ -10,12 +10,20 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Claims\Factory as ClaimFactory;
 use Illuminate\Support\Facades\Redis;
 
 class TokenRepository
 {
 
+
+    protected static int $maxNum = 3;
+
+    /**
+     * 由 token 获取 id
+     * @param string $token
+     * @return int
+     * @throws CommonException
+     */
     public static function getIdByToken(string $token): int
     {
         try {
@@ -28,6 +36,12 @@ class TokenRepository
             }
             if ($role != AccountRepository::$guardRole) {
                 throw new CommonException('Token 非法角色');
+            }
+
+            # 检查是否作废
+            $isHas = self::isTokenExists($token, $id);
+            if (!$isHas) {
+                throw new CommonException('超过终端最大许可数，设备下线。');
             }
             return $id;
         } catch (TokenExpiredException $e) {
@@ -50,28 +64,13 @@ class TokenRepository
         # 设置过期时间 分钟
         $expireTime  = 60 * 24 * 30;
         $accountInfo = AccountRepository::find($accoutId);
-
         # 准备自定义声明
         $customClaims = [
             'exp' => now()->addMinutes($expireTime)->timestamp,
-            'ttl' => $expireTime // 你的自定义声明
+            'ttl' => $expireTime
         ];
-        $token        = JWTAuth::claims($customClaims)->fromUser($accountInfo);
-//        # 2.0+ 新方式：创建Payload并生成token
-//        # 获取 claim factory 实例
-//        $claimFactory = app(ClaimFactory::class);
-//
-//        # 构建基础声明（包含 sub, iat, jti 等）并合并自定义声明
-//        $claims = $claimFactory->make([
-//            'sub' => $accoutInfo->id, # 主题，通常是用户ID
-//            'ttl' => $expireTime
-//        ]);
-//
-//        # 显式设置过期时间
-//        $claims->set('exp', now()->addMinutes($expireTime)->timestamp);
-//
-//        # 生成 token
-//        $token = JWTAuth::encode($claims);
+
+        $token = JWTAuth::claims($customClaims)->fromUser($accountInfo);
         self::saveTokens($token, $accoutId);
         return $token;
     }
@@ -89,7 +88,7 @@ class TokenRepository
         $redis = Redis::connection('default');
 
         # 一个用户 最大可以拥有token 数量
-        $maxNum = 3;
+        $maxNum = self::$maxNum;
         # 毫秒
         $milliseconds = intval(microtime(true) * 1000);
         $redis->zadd($key, $milliseconds, $token); # 有序集合
@@ -105,5 +104,19 @@ class TokenRepository
         }
     }
 
+    /**
+     * 判断 token 是否存在于缓存中
+     *
+     * @param string $token
+     * @param int $id
+     * @return bool
+     */
+    private static function isTokenExists(string $token, int $id): bool
+    {
+        $key   = "account_tokens:" . $id;
+        $redis = Redis::connection('default');
+        $res   = $redis->zrank($key, $token);
+        return $res !== false;
+    }
 
 }
