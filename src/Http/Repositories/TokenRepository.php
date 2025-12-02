@@ -48,24 +48,30 @@ class TokenRepository
     public static function getTokenById(int $accoutId): string
     {
         # 设置过期时间 分钟
-        $expireTime = 60 * 24 * 30;
-        $accoutInfo = AccountRepository::find($accoutId);
+        $expireTime  = 60 * 24 * 30;
+        $accountInfo = AccountRepository::find($accoutId);
 
-        # 2.0+ 新方式：创建Payload并生成token
-        # 获取 claim factory 实例
-        $claimFactory = app(ClaimFactory::class);
-
-        # 构建基础声明（包含 sub, iat, jti 等）并合并自定义声明
-        $claims = $claimFactory->make([
-            'sub' => $accoutInfo->id, # 主题，通常是用户ID
-            'ttl' => $expireTime
-        ]);
-
-        # 显式设置过期时间
-        $claims->set('exp', now()->addMinutes($expireTime)->timestamp);
-
-        # 生成 token
-        $token = JWTAuth::encode($claims);
+        # 准备自定义声明
+        $customClaims = [
+            'exp' => now()->addMinutes($expireTime)->timestamp,
+            'ttl' => $expireTime // 你的自定义声明
+        ];
+        $token        = JWTAuth::claims($customClaims)->fromUser($accountInfo);
+//        # 2.0+ 新方式：创建Payload并生成token
+//        # 获取 claim factory 实例
+//        $claimFactory = app(ClaimFactory::class);
+//
+//        # 构建基础声明（包含 sub, iat, jti 等）并合并自定义声明
+//        $claims = $claimFactory->make([
+//            'sub' => $accoutInfo->id, # 主题，通常是用户ID
+//            'ttl' => $expireTime
+//        ]);
+//
+//        # 显式设置过期时间
+//        $claims->set('exp', now()->addMinutes($expireTime)->timestamp);
+//
+//        # 生成 token
+//        $token = JWTAuth::encode($claims);
         self::saveTokens($token, $accoutId);
         return $token;
     }
