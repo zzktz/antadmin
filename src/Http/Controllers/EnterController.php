@@ -5,12 +5,28 @@
 
 namespace Antmin\Http\Controllers;
 
+use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
+use Antmin\Http\Services\AccountService;
+use Antmin\Http\Services\LoginService;
+use Antmin\Http\Services\PermissionsService;
 use Illuminate\Http\Request;
 
 class EnterController extends BaseController
 {
 
+
+    /**
+     * 构造函数注入依赖
+     */
+    public function __construct(
+        protected AccountService $accountService,
+        protected LoginService   $loginService,
+
+    )
+    {
+        # 依赖已通过容器自动注入
+    }
 
     public function operate(Request $request)
     {
@@ -36,9 +52,13 @@ class EnterController extends BaseController
         return HomeController::step2Code();
     }
 
-    protected static function getUserInfo($request)
+    protected function getUserInfo($request)
     {
-        return HomeController::getUserInfo($request);
+        $accountId = $request['accountId'];
+        $res       = $this->accountService->getAccountBaseInfo($accountId);
+//        $permissions = PermissionsService::handleGetPermissionByAccountId($accountId);
+//        $res['role'] = $permissions;
+        return Base::sucJson('成功', $res);
     }
 
     protected static function personalInfoEdit($request)

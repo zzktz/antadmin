@@ -10,6 +10,17 @@ use Antmin\Http\Services\AccountService;
 class Middleware
 {
 
+
+    /**
+     * 构造函数注入依赖
+     */
+    public function __construct(
+        protected AccountService $accountService,
+    )
+    {
+        # 依赖已通过容器自动注入
+    }
+
     /**
      * 中间件操作
      * @param $request
@@ -17,7 +28,7 @@ class Middleware
      * @return mixed
      * @throws CommonException
      */
-    public static function handle($request, Closure $next)
+    public function handle($request, Closure $next)
     {
         $path            = $request->path();
         $method          = self::getMethodName($path);
@@ -32,7 +43,7 @@ class Middleware
             throw new CommonException('Access-Token 不存在');
         }
 
-        $request['accountId'] = AccountService::getAccountIdByToken($token);
+        $request['accountId'] = $this->accountService->getAccountIdByToken($token);
         return $next($request);
     }
 
@@ -41,7 +52,7 @@ class Middleware
      * @param string $path
      * @return string
      */
-    private static function getMethodName(string $path): string
+    private function getMethodName(string $path): string
     {
         # 如果字符串以 'api' 开头，按 '/' 分割并获取第二部分
         $parts = explode('/', $path);

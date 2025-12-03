@@ -16,12 +16,21 @@ class TokenRepository
 {
 
     /**
+     * 构造函数注入依赖
+     */
+    public function __construct(
+        protected AccountRepository $accountRepo,
+    )
+    {
+        # 依赖已通过容器自动注入
+    }
+
+    /**
      * 由 token 获取 id
      * @param string $token
      * @return int
-     * @throws CommonException
      */
-    public static function getIdByToken(string $token): int
+    public function getIdByToken(string $token): int
     {
         try {
             $payload = JWTAuth::setToken($token)->getPayload();
@@ -31,7 +40,7 @@ class TokenRepository
             if (empty($arr['role'])) {
                 throw new CommonException('Token 无角色设置');
             }
-            if ($role != AccountRepository::$guardRole) {
+            if ($role != 'antadmin') {
                 throw new CommonException('Token 非法角色');
             }
 
@@ -56,11 +65,11 @@ class TokenRepository
      * @param int $accoutId
      * @return string
      */
-    public static function getTokenById(int $accoutId): string
+    public function getTokenById(int $accoutId): string
     {
         # 设置过期时间 分钟
         $expireTime  = 60 * 24 * 30;
-        $accountInfo = AccountRepository::find($accoutId);
+        $accountInfo = $this->accountRepo->getInfo($accoutId);
         # 准备自定义声明
         $customClaims = [
             'exp' => now()->addMinutes($expireTime)->timestamp,
@@ -79,7 +88,7 @@ class TokenRepository
      * @param int $id
      * @return void
      */
-    private static function saveTokens(string $token, int $id): void
+    private function saveTokens(string $token, int $id): void
     {
         $key   = "account_tokens:" . $id;
         $redis = Redis::connection('default');
@@ -108,7 +117,7 @@ class TokenRepository
      * @param int $id
      * @return bool
      */
-    private static function isTokenExists(string $token, int $id): bool
+    private function isTokenExists(string $token, int $id): bool
     {
         $key   = "account_tokens:" . $id;
         $redis = Redis::connection('default');

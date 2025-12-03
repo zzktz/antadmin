@@ -33,7 +33,6 @@ class AccountController extends BaseController
      */
     public function login(Request $request)
     {
-        throw new CommonException('登录失败1111 ');
         try {
             if ($request->has('username')) {
                 # 用户名密码登录

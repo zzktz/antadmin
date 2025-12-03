@@ -214,10 +214,9 @@ class AccountRepository
         return $account ? $account->toArray() : [];
     }
 
-    public function getInfo(int $accountId): array
+    public function getInfo(int $accountId)
     {
-        $account = $this->accountModel->where('id', $accountId)->first();
-        return $account ? $account->toArray() : [];
+        return $this->accountModel->where('id', $accountId)->first();
     }
 
     public function isSuperAdmin(int $accountId): bool
@@ -236,7 +235,6 @@ class AccountRepository
         }
         return Hash::check(md5($password), $account->password);
     }
-
 
 
 }

@@ -16,6 +16,17 @@ use Antmin\Http\Services\PermissionsService;
 class HomeController extends BaseController
 {
 
+    /**
+     * 构造函数注入依赖
+     */
+    public function __construct(
+        protected AccountService $accountService,
+        protected LoginService   $loginService,
+
+    )
+    {
+        # 依赖已通过容器自动注入
+    }
 
     /**
      * 短信码
@@ -32,13 +43,13 @@ class HomeController extends BaseController
     }
 
 
-    public static function logout()
+    public function logout()
     {
         LoginService::accountLogout();
         return Base::sucJson('成功退出');
     }
 
-    public static function step2Code()
+    public function step2Code()
     {
         return Base::sucJson('成功');
     }
@@ -48,10 +59,10 @@ class HomeController extends BaseController
      * @param $request
      * @return mixed
      */
-    public static function getUserInfo($request)
+    public function getUserInfo($request)
     {
         $accountId   = $request['accountId'];
-        $res         = AccountService::getAccountBaseInfo($accountId);
+        $res         = $this->accountService->getAccountBaseInfo($accountId);
         $permissions = PermissionsService::handleGetPermissionByAccountId($accountId);
         $res['role'] = $permissions;
         return Base::sucJson('成功', $res);
