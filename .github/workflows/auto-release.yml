@@ -64,45 +64,45 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
-      - name: Cleanup old releases (keep only latest 3)
+      - name: Cleanup old releases for v2 (keep only latest one)
         run: |
-          # 获取所有 releases 按创建时间排序
+          # 获取所有 releases
           echo "Fetching all releases..."
           RELEASES_JSON=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100")
           
-          # 提取所有 release ID 和对应的 tag，按创建时间倒序排列
-          echo "$RELEASES_JSON" | jq -r 'sort_by(.created_at) | reverse | .[] | "\(.id) \(.tag_name) \(.created_at)"' > releases.txt
+          # 1. 提取所有 v2.*.* 的 release，按版本号降序排列
+          echo "$RELEASES_JSON" | jq -r '.[] | select(.tag_name | startswith("v2.")) | "\(.id) \(.tag_name) \(.created_at)"' | sort -t. -k2,2nr -k3,3nr -k4,4nr > v2_releases.txt
           
-          echo "All releases:"
-          cat releases.txt
+          echo "All v2 releases sorted by version:"
+          cat v2_releases.txt
           
-          # 跳过最新的3个，删除其余的
-          echo "Deleting old releases (keeping only latest 3)..."
-          tail -n +4 releases.txt | while read line; do
+          # 2. 跳过最新（第一行）的 v2 release，删除其余所有 v2 releases
+          echo "Deleting old v2 releases (keeping only the latest one)..."
+          tail -n +2 v2_releases.txt | while read line; do
             RELEASE_ID=$(echo $line | awk '{print $1}')
             TAG_NAME=$(echo $line | awk '{print $2}')
-            CREATED_AT=$(echo $line | awk '{print $3}')
           
             if [ ! -z "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
-              echo "Deleting old release: $TAG_NAME (ID: $RELEASE_ID, Created: $CREATED_AT)"
+              echo "Deleting old v2 release: $TAG_NAME (ID: $RELEASE_ID)"
           
-              # 删除 release
-              # curl -s -X DELETE \
-              # -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              # "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+              # 删除 release (取消注释以启用)
+              curl -s -X DELETE \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
           
-              # 删除对应的 tag
-              # git push origin :refs/tags/$TAG_NAME || echo "Failed to delete tag: $TAG_NAME"
+              # 删除对应的 tag (取消注释以启用)
+              git push origin :refs/tags/$TAG_NAME || echo "Failed to delete tag: $TAG_NAME"
           
-              echo "✅ Deleted release and tag: $TAG_NAME"
+              echo "✅ Deleted v2 release and tag: $TAG_NAME"
             fi
           done
           
           # 清理临时文件
-          rm -f releases.txt
-          echo "Cleanup completed"
+          rm -f v2_releases.txt
+          echo "Cleanup of old v2 releases completed."
+          echo "Note: All v1.x.x releases are untouched."
 
       - name: Create and push new tag
         run: |
@@ -136,8 +136,5 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/releases" | jq length)
           
           echo "Current number of releases: $RELEASES_COUNT"
-          if [ "$RELEASES_COUNT" -gt 3 ]; then
-            echo "⚠️ Warning: More than 3 releases found"
-          else
-            echo "✅ Releases count is within limit"
-          fi
+          # 不再检查总数，因为v1版本会被保留
+          echo "✅ Cleanup logic executed. v1 releases are preserved."
