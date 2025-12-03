@@ -1,6 +1,6 @@
 <?php
 /**
- * 账号管理
+ * 账号
  */
 
 namespace Antmin\Http\Controllers;

@@ -73,7 +73,7 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100")
           
           # 1. 提取所有 v2.*.* 的 release，按版本号降序排列
-          echo "$RELEASES_JSON" | jq -r '.[] | select(.tag_name | startswith("v2.")) | "\(.id) \(.tag_name) \(.created_at)"' | sort -t. -k2,2nr -k3,3nr -k4,4nr > v2_releases.txt
+          echo "$RELEASES_JSON" | jq -r '.[] | select(.tag_name | startswith("v2.")) | "\(.id) \(.tag_name) \(.created_at)"' | sort -Vr > v2_releases.txt
           
           echo "All v2 releases sorted by version:"
           cat v2_releases.txt
@@ -120,7 +120,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.versioning.outputs.new_tag }}
-          name: Release ${{ steps.versioning.outputs.new_tag }}
+          name: ${{ steps.versioning.outputs.new_tag }}  # 关键修改：直接使用标签名作为 Release 名称
           generate_release_notes: true
           draft: false
           prerelease: false
@@ -136,5 +136,4 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/releases" | jq length)
           
           echo "Current number of releases: $RELEASES_COUNT"
-          # 不再检查总数，因为v1版本会被保留
           echo "✅ Cleanup logic executed. v1 releases are preserved."
