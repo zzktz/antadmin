@@ -15,9 +15,6 @@ use Illuminate\Support\Facades\Redis;
 class TokenRepository
 {
 
-
-    protected static int $maxNum = 3;
-
     /**
      * 由 token 获取 id
      * @param string $token
@@ -88,7 +85,7 @@ class TokenRepository
         $redis = Redis::connection('default');
 
         # 一个用户 最大可以拥有token 数量
-        $maxNum = self::$maxNum;
+        $maxNum = 3;
         # 毫秒
         $milliseconds = intval(microtime(true) * 1000);
         $redis->zadd($key, $milliseconds, $token); # 有序集合

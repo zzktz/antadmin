@@ -4,86 +4,91 @@ namespace Antmin\Http\Repositories;
 
 use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
-use Antmin\Models\SmsReport as Model;
+use Antmin\Models\SmsReport;
 use Antmin\Third\SmsThird;
 use Exception;
-use Illuminate\Support\Facades\Redis;
+# use Illuminate\Contracts\Redis\Connection;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 
-class SmsRepository extends Model
+class SmsService # 不再继承 Model，改为一个纯粹的服务类
 {
+    # 配置定义为类常量
+    protected const CACHE_OUT_TIME   = 600;
+    protected const CACHE_CONNECTION = 'default';
+    protected const CODE_MAX_DIGITS  = 4;
+    protected const CODE_DEV_DEFAULT = '8666';
+    protected const CODE_SEND_TYPE   = ['reg', 'login', 'fixPassword', 'forgetPassword'];
 
-    protected static $cacheOutTime    = 600; # 短信过期时间 秒
-    protected static $cacheConnection = 'default';
-    protected static $codeMaxDigits   = 4;
-    protected static $codeDevDefault  = '8666';
-    protected static $codeSendType    = ['reg', 'login', 'fixPassword', 'forgetPassword'];
-
-
-    public static function getSendType(): array
+    # 通过构造函数注入依赖
+    public function __construct(
+        protected RedisConnection $redis, # 注入 Redis 连接
+        protected SmsReport       $smsReportModel # 注入 Model 实例
+    )
     {
-        return self::$codeSendType;
+        # 可以在构造函数里初始化连接，但这里通过注入已经完成
+        # $this->redis = Redis::connection(self::CACHE_CONNECTION);
     }
 
-    public static function sendSmsCode(string $mobile, string $ip): int
+    public function getSendType(): array
+    {
+        return self::CODE_SEND_TYPE;
+    }
+
+    public function sendSmsCode(string $mobile, string $ip): int
     {
         $tplId   = '';
-        $code    = num_random(self::$codeMaxDigits);
+        $code    = num_random(self::CODE_MAX_DIGITS);
         $data[0] = $code;
-        # 发送
+
         SmsThird::send($mobile, $tplId, $data);
-        # 缓存
-        $key   = self::getCacheKey($mobile);
-        $redis = Redis::connection(self::$cacheConnection);
-        $redis->setex($key, self::$cacheOutTime, $code);
-        return self::addReport($mobile, $code, $ip);
+
+        $key = $this->getCacheKey($mobile);
+        $this->redis->setex($key, self::CACHE_OUT_TIME, $code);
+
+        return $this->addReport($mobile, $code, $ip);
     }
 
-
-    public static function checkSmsCode(string $mobile, string $smsCode, bool $isSingle = true): bool
+    public function checkSmsCode(string $mobile, string $smsCode, bool $isSingle = true): bool
     {
-//        if (Base::isDev() && $smsCode == self::$codeDevDefault) {
-//            return true;
-//        }
-        if ($smsCode == self::$codeDevDefault) {
+        if ($smsCode == self::CODE_DEV_DEFAULT) {
             return true;
         }
-        $key   = self::getCacheKey($mobile);
-        $redis = Redis::connection(self::$cacheConnection);
-        if (empty($redis->exists($key))) {
+
+        $key = $this->getCacheKey($mobile);
+        if (!$this->redis->exists($key)) {
             return false;
         }
-        $res = $redis->get($key);
-        if (empty($res)) {
-            return false;
-        }
+
+        $res = $this->redis->get($key);
         if ($res !== $smsCode) {
             return false;
         }
+
         if ($isSingle) {
-            $redis->del($key);
+            $this->redis->del($key);
         }
         return true;
     }
 
-
-    private static function addReport(string $mobile, string $code, string $ip, string $msg = ''): int
+    private function addReport(string $mobile, string $code, string $ip, string $msg = ''): int
     {
         try {
-            $in['ip']     = $ip;
-            $in['msg']    = $msg;
-            $in['code']   = $code;
-            $in['mobile'] = $mobile;
-            return Model::create($in)->id;
+            return $this->smsReportModel->newQuery()->create([
+                'ip'     => $ip,
+                'msg'    => $msg,
+                'code'   => $code,
+                'mobile' => $mobile,
+            ])->id;
         } catch (Exception $e) {
             throw new CommonException($e->getMessage());
         }
     }
 
-
-    private static function getCacheKey(string $key): string
+    private function getCacheKey(string $key): string
     {
-        return Base::utf8_str_replace(self::class, '\\', '_') . '_' . $key;
+        return Base::utf8_str_replace(static::class, '\\', '_') . '_' . $key;
     }
+
 
 
 }
