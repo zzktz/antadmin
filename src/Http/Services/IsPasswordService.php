@@ -3,9 +3,8 @@
  * 账号
  */
 
-namespace App\Http\Services;
+namespace Antmin\Http\Services;
 
-use Antmin\Common\BaseImage;
 use Antmin\Exceptions\CommonException;
 
 class IsPasswordService
@@ -34,7 +33,7 @@ class IsPasswordService
             throw new CommonException('密码应为字母、数字、特殊符号6~16个字符');
         } elseif ($num == 2) {
             throw new CommonException('密码应为字母、数字、特殊符号6~16个字符');
-        } elseif ($num >= 3) {
+        } else {
             return true;
         }
     }

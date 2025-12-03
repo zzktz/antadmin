@@ -10,7 +10,7 @@ use Exception;
 # use Illuminate\Contracts\Redis\Connection;
 use Illuminate\Redis\Connections\Connection as RedisConnection;
 
-class SmsService # 不再继承 Model，改为一个纯粹的服务类
+class SmsRepository # 不再继承 Model，改为一个纯粹的服务类
 {
     # 配置定义为类常量
     protected const CACHE_OUT_TIME   = 600;

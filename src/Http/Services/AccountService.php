@@ -5,15 +5,15 @@
 
 namespace Antmin\Http\Services;
 
+use Exception;
 use Antmin\Common\Base;
-use Antmin\Common\BaseImage;
 use Antmin\Exceptions\CommonException;
 use Antmin\Http\Repositories\AccountRepository;
 use Antmin\Http\Repositories\AccountRoleRepository;
 use Antmin\Http\Repositories\RoleRepository;
 use Antmin\Http\Repositories\PermissionRepository;
 use Antmin\Http\Repositories\TokenRepository;
-use Exception;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -280,23 +280,5 @@ class AccountService
         return $imgUrl;
     }
 
-    /**
-     * 上传头像（兼容旧版接口）
-     */
-    public function uploadAvatarLegacy(int $accountId): string
-    {
-        if (empty($_FILES)) {
-            throw new CommonException('没有上传文件');
-        }
 
-        $path = '/upload/avatar/' . date('Ymd');
-        $rest = BaseImage::originUpload($_FILES, $path, '1024000', ['jpg', 'jpeg', 'png', 'gif']);
-
-        $imgPath = $rest['imgPath'];
-        $imgUrl  = $rest['imgUrl'];
-
-        $this->accountRepo->updateAvatar($imgPath, $accountId);
-
-        return $imgUrl;
-    }
 }
