@@ -6,6 +6,7 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Resources\EditorResource;
 use Antmin\Http\Repositories\AccountRepository;
 use Illuminate\Http\Request;
@@ -14,6 +15,15 @@ use Exception;
 
 class UploadController extends BaseController
 {
+
+
+    public function __construct(
+        protected AccountRepository $accountRepo,
+    )
+    {
+
+    }
+
     /**
      * 允许的文件类型配置
      */
@@ -39,43 +49,38 @@ class UploadController extends BaseController
      */
     public function operate(Request $request)
     {
-        $action = $request->input('action');
-        if (empty($action)) {
-            return Base::errJson('Action parameter is required');
-        }
-        if (method_exists($this, $action)) {
-            return $this->$action($request);
-        }
-        return Base::errJson("Action {$action} not found");
+        $action = $request['action'];
+        if (method_exists(self::class, $action)) return $this->$action($request);
+        throw new CommonException('System Not Find Action');
     }
 
 
     /**
      * 图片上传
-     * @param Request $request
+     * @param  $request
      * @return mixed
      */
-    public function imageUpload(Request $request)
+    protected function imageUpload($request)
     {
         return $this->handleFileUpload($request, 'image', 'file');
     }
 
     /**
      * 视频上传
-     * @param Request $request
+     * @param  $request
      * @return mixed
      */
-    public function videoUpload(Request $request)
+    protected function videoUpload($request)
     {
         return $this->handleFileUpload($request, 'video', 'file');
     }
 
     /**
      * 通用文件上传
-     * @param Request $request
+     * @param  $request
      * @return mixed
      */
-    public function fileUpload(Request $request)
+    protected function fileUpload($request)
     {
         return $this->handleFileUpload($request, 'file', 'file');
     }
@@ -92,14 +97,14 @@ class UploadController extends BaseController
     {
         # 验证文件存在性
         if (!$request->hasFile($fileKey)) {
-            return Base::errJson($fileKey . "不存在");
+            throw new CommonException($fileKey . "不存在");
         }
 
         $file = $request->file($fileKey);
 
         #  验证文件有效性
         if (!$file->isValid()) {
-            return Base::errJson('文件无效');
+            throw new CommonException('文件无效');
         }
 
         try {
@@ -112,13 +117,13 @@ class UploadController extends BaseController
             #  验证文件大小
             $maxSize = self::SIZE_LIMITS[$fileType] ?? 2;
             if ($fileSize > 1024 * 1024 * $maxSize) {
-                return Base::errJson("超过最大允许上传大小 {$maxSize}MB");
+                throw new CommonException("超过最大允许上传大小 {$maxSize}MB");
             }
 
             #  验证文件类型
             $allowedExtensions = self::ALLOWED_EXTENSIONS[$fileType] ?? [];
             if (!in_array($extension, $allowedExtensions)) {
-                return Base::errJson("不支持的文件格式: {$extension}");
+                throw new CommonException("不支持的文件格式: {$extension}");
             }
 
             #  生成存储路径和文件名
@@ -154,7 +159,7 @@ class UploadController extends BaseController
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return Base::errJson('文件上传失败，请稍后重试');
+            throw new CommonException('文件上传失败，请稍后重试');
         }
     }
 
@@ -190,7 +195,8 @@ class UploadController extends BaseController
     {
         try {
             if (!empty($avatarPath) && !empty($accountId)) {
-                AccountRepository::updateAvatar($avatarPath, $accountId);
+                # 更新用户头像
+                $this->accountRepo->updateAvatar($avatarPath, $accountId);
             }
         } catch (Exception $e) {
             Log::error('更新用户头像失败', [
@@ -212,7 +218,7 @@ class UploadController extends BaseController
         $action = $request->input('action', '');
 
         if (empty($action)) {
-            return Base::errJson('action不能为空');
+            throw new CommonException('action不能为空');
         }
 
         if ($method === 'GET' && $action === 'config') {
@@ -220,7 +226,7 @@ class UploadController extends BaseController
         }
 
         if (!$request->hasFile('upfile')) {
-            return Base::errJson('不存在upfile');
+            throw new CommonException('不存在upfile');
         }
 
         try {

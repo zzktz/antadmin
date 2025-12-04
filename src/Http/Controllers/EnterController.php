@@ -36,7 +36,6 @@ class EnterController extends BaseController
     public function operate(Request $request)
     {
         $action = $request['action'];
-        unset($request['action']);
         if (method_exists(self::class, $action)) return $this->$action($request);
         throw new CommonException('System Not Find Action');
     }
@@ -234,7 +233,7 @@ class EnterController extends BaseController
 
 
     /**
-     * 【账号管理】账号列表
+     * 【账号管理】列表
      * @param $request
      * @return mixed
      */
@@ -247,38 +246,58 @@ class EnterController extends BaseController
         return Base::sucJson('成功', $res);
     }
 
+    /**
+     *【账号管理】添加
+     * @param $request
+     * @return mixed
+     */
     protected function accountAdd($request)
     {
-        return AccountController::accountAdd($request);
+        $opId = $request['accountId'];
+
+        $request->validate([
+            'username' => 'required|max:30',
+            'mobile'   => 'required|mobile',
+            'roles'    => 'required|array',
+            'email'    => 'nullable|email',
+            'password' => 'nullable|min:8'
+        ]);
+
+        $info['nickname'] = $request->input('username');
+        $info['email']    = $request->input('email', $request->input('mobile') . '@163.com');
+        $info['mobile']   = $request->input('mobile');
+        $info['password'] = $request->input('password');
+        $info['roles']    = $request->input('roles');
+
+        $userId = $this->accountService->accountAdd($info, $opId);
+
+        return Base::sucJson('账号添加成功', ['id' => $userId]);
     }
 
+    /**
+     *【账号管理】编辑
+     * @param $request
+     * @return mixed
+     */
     protected function accountEdit($request)
     {
         $opId = $request['accountId'];
         $request->validate([
             'id'       => 'required|integer',
             'username' => 'required|max:50',
-            'email'    => 'nullable|email',
+            'email'    => 'required|email',
             'mobile'   => 'required|regex:/^1[3-9]\d{9}$/',
             'roles'    => 'required|array'
         ]);
+        $id               = $request->input('id');
+        $info['nickname'] = $request->input('username');
+        $info['email']    = $request->input('email');
+        $info['mobile']   = $request->input('mobile');
+        $info['roles']    = $request->input('roles');
 
-        $id       = $request->input('id');
-        $nickname = $request->input('username');
-        $email    = $request->input('email', $request->input('mobile') . '@163.com');
-        $mobile   = $request->input('mobile');
-        $roles    = $request->input('roles');
-
-        $this->accountService->accountEdit(
-            $nickname, $email, $mobile, $roles, $id, $opId
-        );
+        $this->accountService->accountEdit($info, $id, $opId);
 
         return Base::sucJson('账号编辑成功');
-    }
-
-    protected function accountEditPassword($request)
-    {
-        return AccountController::accountEditPassword($request);
     }
 
     /**
@@ -290,18 +309,21 @@ class EnterController extends BaseController
     {
         $opId = $request['accountId'];
         $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->accountService->accountEditStatus($id, $opId);
+        $this->accountService->editStatus($id, $opId);
         return Base::sucJson('状态更新成功');
     }
 
-    protected function accountDetail($request)
-    {
-        return AccountController::accountDetail($request);
-    }
-
+    /**
+     * 【账号管理】删除
+     * @param $request
+     * @return mixed
+     */
     protected function accountDel($request)
     {
-        return AccountController::accountDel($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $this->accountService->accountDel($id, $opId);
+        return Base::sucJson('删除成功');
     }
 
     /**
@@ -311,8 +333,9 @@ class EnterController extends BaseController
      */
     protected function reInitPassword($request)
     {
-        $this->accountService->reInitPassword($request);
-        return Base::sucJson('成功');
+        $id = Base::getValue($request, 'id', '', 'required|integer');
+        $this->accountService->reInitPassword($id);
+        return Base::sucJson('密码重置成功');
     }
 
 

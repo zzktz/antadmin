@@ -5,13 +5,14 @@
 
 namespace Antmin\Http\Repositories;
 
-use DB;
+
 use Exception;
 use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
 use Antmin\Models\Account as AccountModel;
 use Antmin\Models\AccountRole as AccountRoleModel;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class AccountRepository
 {
@@ -84,33 +85,28 @@ class AccountRepository
     /**
      * 添加用户
      */
-    public function add(string $name, string $nickname, string $email, string $mobile, array $roles, string $password = ''): int
+    public function add(array $info): int
     {
         try {
             # 使用事务确保数据一致性
-            return DB::transaction(function () use ($name, $nickname, $email, $mobile, $roles, $password) {
+            return DB::transaction(function () use ($info) {
                 # 准备用户数据
                 $userData = [
-                    'name'     => $name,
-                    'nickname' => $nickname,
-                    'mobile'   => $mobile,
-                    'email'    => $email,
-                    'password' => $password
-                        ? Hash::make(md5($password))
-                        : Hash::make(md5(str_random(12)))
+                    'name'     => $info['name'],
+                    'nickname' => $info['nickname'],
+                    'mobile'   => $info['mobile'],
+                    'email'    => $info['email'],
+                    'password' => !empty($password) ? Hash::make(md5($password)) : Hash::make(md5(str_random(12)))
                 ];
-
                 # 创建用户
                 $account = $this->accountModel->create($userData);
-
                 # 分配角色
-                foreach ($roles as $roleId) {
+                foreach ($info['roles'] as $roleId) {
                     $this->accountRoleModel->create([
                         'account_id' => $account->id,
                         'role_id'    => $roleId
                     ]);
                 }
-
                 return $account->id;
             });
         } catch (Exception $e) {
@@ -118,76 +114,46 @@ class AccountRepository
         }
     }
 
-    /**
-     * 更新用户密码
-     */
-    public function updatePassword(string $password, int $accountId): bool
+
+    public function editStatus(int $status, int $id): bool
     {
-        $encryptPassword = Hash::make(md5($password));
-        return $this->accountModel->where('id', $accountId)->update(['password' => $encryptPassword]);
+        $one = $this->accountModel->find($id);
+        $one->update(['status' => $status]);
+        return true;
     }
 
     /**
      * 编辑用户信息
      */
-    public function edit(string $nickname, string $email, string $mobile, array $roles, int $accountId): bool
+    public function edit(array $info, int $id): bool
     {
-        try {
-            return DB::transaction(function () use ($nickname, $email, $mobile, $roles, $accountId) {
-                # 更新用户基本信息
-                $userData = [
-                    'nickname' => $nickname,
-                    'mobile'   => $mobile,
-                    'email'    => $email
-                ];
-                $this->accountModel->where('id', $accountId)->update($userData);
+        $one = $this->accountModel->find($id);
+        $one->update($info);
 
-                # 更新用户角色
-                $this->accountRoleModel->where('account_id', $accountId)->delete();
-                foreach ($roles as $roleId) {
-                    $this->accountRoleModel->create([
-                        'account_id' => $accountId,
-                        'role_id'    => $roleId
-                    ]);
-                }
-
-                return true;
-            });
-        } catch (Exception $e) {
-            throw new CommonException('编辑用户失败: ' . $e->getMessage());
+        # 删除所有
+        $this->accountRoleModel->where('account_id', $id)->delete();
+        $roles = $info['roles'] ?? [];
+        if (empty($roles)) {
+            return true;
         }
+        # 重新添加
+        foreach ($roles as $roleId) {
+            $this->accountRoleModel->create([
+                'account_id' => $id,
+                'role_id'    => $roleId
+            ]);
+        }
+        return true;
     }
 
-    /**
-     * 个人编辑
-     */
-    public function personalEdit(array $info, int $accountId): bool
+
+    public function del(int $id): void
     {
-        try {
-            return $this->accountModel->where('id', $accountId)->update($info);
-        } catch (Exception $e) {
-            throw new CommonException('更新个人信息失败: ' . $e->getMessage());
-        }
-    }
-
-    public function del(int $accountId): bool
-    {
-        try {
-            return DB::transaction(function () use ($accountId) {
-                # 检查是否为超级管理员
-                if ($this->isSuperAdmin($accountId)) {
-                    throw new CommonException('不能删除超级管理员');
-                }
-
-                # 删除用户角色关联
-                $this->accountRoleModel->where('account_id', $accountId)->delete();
-
-                # 删除用户
-                return $this->accountModel->where('id', $accountId)->delete() > 0;
-            });
-        } catch (Exception $e) {
-            throw new CommonException('删除用户失败: ' . $e->getMessage());
-        }
+        # 删除用户
+        $one = $this->accountModel->find($id);
+        $one->delete();
+        # 删除用户角色关联
+        $this->accountRoleModel->where('account_id', $id)->delete();
     }
 
     public function updateAvatar(string $avatar, int $accountId): bool
@@ -222,18 +188,6 @@ class AccountRepository
     public function isSuperAdmin(int $accountId): bool
     {
         return $accountId == self::SUPPER_ADMIN_ID;
-    }
-
-    /**
-     * 验证用户密码
-     */
-    public function verifyPassword(string $password, int $accountId): bool
-    {
-        $account = $this->accountModel->where('id', $accountId)->first();
-        if (!$account) {
-            return false;
-        }
-        return Hash::check(md5($password), $account->password);
     }
 
 

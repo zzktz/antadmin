@@ -74,11 +74,10 @@ class AccountService
     /**
      * 账号列表
      */
-    public function accountList(int $limit, int $opId): array
+    public function accountList(int $limit, int $accountId): array
     {
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
+        # 权限验证
+        $this->checkPermissions($accountId);
 
         return [
             'users' => $this->accountRepo->getFormatList($limit),
@@ -90,19 +89,28 @@ class AccountService
     /**
      * 账号添加
      */
-    public function accountAdd(string $nickname, string $email, string $mobile, array $roles, string $password, int $opId): int
+    public function accountAdd(array $info, int $accountId): int
     {
-        # 密码强度验证
-        $this->checkPasswordStrength($password);
+
+        $nickname = $info['nickname'];
+        $email    = $info['email'];
+        $mobile   = $info['mobile'];
+        $roles    = $info['roles'];
+        $password = $info['password'];
 
         # 权限验证
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
+        $this->checkPermissions($accountId);
+        # 密码强度验证
+        PasswordService::checkPasswordStrength($password);
+
 
         # 参数验证
         if (empty($roles)) {
             throw new CommonException('角色值不存在');
+        }
+        # 角色权限检查
+        if (in_array(1, $roles)) {
+            throw new CommonException('超级管理员角色不可以添加');
         }
 
         # 生成唯一用户名
@@ -119,33 +127,38 @@ class AccountService
             throw new CommonException('邮箱已存在');
         }
 
-        # 角色权限检查
-        if (in_array(1, $roles)) {
-            throw new CommonException('超级管理员角色不可以添加');
-        }
+
+        $in['name']     = $name;
+        $in['nickname'] = $nickname;
+        $in['email']    = $email;
+        $in['mobile']   = $mobile;
+        $in['roles']    = $roles;
+        $in['password'] = $password;
 
         # 添加用户
-        return $this->accountRepo->add($name, $nickname, $email, $mobile, $roles, $password);
+        return $this->accountRepo->add($in);
     }
 
     /**
      * 账号编辑
      */
-    public function accountEdit(string $nickname, string $email, string $mobile, array $roles, int $accountId, int $opId): bool
+    public function accountEdit(array $info, int $id, int $accountId): bool
     {
         # 权限验证
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
+        $this->checkPermissions($accountId);
+
+        $email  = $info['email'];
+        $mobile = $info['mobile'];
+        $roles  = $info['roles'];
 
         # 唯一性检查
         $infoByMobile = $this->accountRepo->getInfoByMobile($mobile);
-        if ($infoByMobile && $accountId != $infoByMobile['id']) {
+        if ($infoByMobile && $id != $infoByMobile['id']) {
             throw new CommonException('手机号已存在');
         }
 
         $infoByEmail = $this->accountRepo->getInfoByEmail($email);
-        if ($infoByEmail && $accountId != $infoByEmail['id']) {
+        if ($infoByEmail && $id != $infoByEmail['id']) {
             throw new CommonException('邮箱已存在');
         }
 
@@ -155,7 +168,7 @@ class AccountService
         }
 
         # 执行编辑
-        return $this->accountRepo->edit($nickname, $email, $mobile, $roles, $accountId);
+        return $this->accountRepo->edit($info, $id);
     }
 
     /**
@@ -183,80 +196,45 @@ class AccountService
             }
 
             # 执行更新
-            return $this->accountRepo->personalEdit([$field => $value], $accountId);
+            return $this->accountRepo->edit([$field => $value], $accountId);
         } catch (Exception $e) {
             throw new CommonException($e->getMessage());
         }
     }
 
-    /**
-     * 更新密码
-     */
-    public function accountEditPassword(string $password, int $accountId, int $opId): bool
-    {
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
-
-        return $this->accountRepo->updatePassword($password, $accountId);
-    }
 
     /**
      * 更新状态
      */
-    public function accountEditStatus(int $accountId, int $opId): bool
+    public function editStatus(int $id, int $accountId): bool
     {
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
+        # 权限验证
+        $this->checkPermissions($accountId);
 
-        $account = $this->accountRepo->getInfo($accountId);
+        $account = $this->accountRepo->getInfo($id);
         if (empty($account)) {
             throw new CommonException('用户不存在');
         }
 
         $newStatus = empty($account['status']) ? 1 : 0;
-        return $this->accountRepo->updateStatus($accountId, $newStatus);
+        return $this->accountRepo->editStatus($newStatus, $id);
     }
 
-    /**
-     * 账号详情
-     */
-    public function accountDetail(int $id, int $opId): array
-    {
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
-
-        $account = $this->accountRepo->getInfoFormat($id);
-        if (empty($account)) {
-            throw new CommonException('用户不存在');
-        }
-
-        $account['rolesData'] = $this->roleRepo->getRolesByAccountId($id, ['id', 'name']);
-        $account['rules']     = $this->permissionRepo->getAllPermissionsByAccountId($account['id']);
-
-        return $account;
-    }
 
     /**
      * 删除账号
      */
-    public function accountDel(int $id, int $opId): bool
+    public function accountDel(int $id, int $accountId): void
     {
-        if (!$this->accountRepo->isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
+        # 权限验证
+        $this->checkPermissions($accountId);
 
         if ($this->accountRepo->isSuperAdmin($id)) {
             throw new CommonException('超级管理员不可以删除');
         }
 
-        # 删除用户角色关联
-        $this->accountRoleRepo->deleteByAccountId($id);
-
         # 删除用户
-        return $this->accountRepo->del($id);
+        $this->accountRepo->del($id);
     }
 
     /**
@@ -296,85 +274,12 @@ class AccountService
     }
 
 
-    /**
-     * 检查密码强度
-     * 要求：6-16位字符，至少包含字母大写、小写、数字、特殊符号 其中3种的组合
-     *
-     * @param string $password 待检查的密码
-     * @return void
-     */
-    private function checkPasswordStrength(string $password): void
+    private function checkPermissions(int $accountId): void
     {
-        # 1. 基本长度检查
-        $passwordLength = mb_strlen($password, 'UTF-8');
-        if ($passwordLength < 6 || $passwordLength > 16) {
-            throw new CommonException('密码长度应为6~16个字符');
+        if (!$this->accountRepo->isSuperAdmin($accountId)) {
+            throw new CommonException('非超级管理员无权操作');
         }
-
-        # 2. 性能优化：提前检查常见弱密码
-        if ($this->isWeakPassword($password)) {
-            throw new CommonException('密码强度不足，请使用更复杂的密码');
-        }
-
-        # 3. 使用位运算记录字符类型（性能更好）
-        $characterTypes     = 0;
-        $characterTypesMask = [
-            'lower'   => 1,    # 0001
-            'upper'   => 2,    # 0010
-            'digit'   => 4,    # 0100
-            'special' => 8,    # 1000
-        ];
-
-        # 4. 单次遍历检查所有类型
-        $specialChars   = '!@#$%^&*()_+-="\'|>?`~';
-        $specialCharMap = array_flip(str_split($specialChars));
-
-        for ($i = 0; $i < $passwordLength; $i++) {
-            $char     = $password[$i];
-            $charCode = ord($char);
-
-            # 检查小写字母
-            if ($charCode >= 97 && $charCode <= 122) {
-                $characterTypes |= $characterTypesMask['lower'];
-                continue;
-            }
-
-            # 检查大写字母
-            if ($charCode >= 65 && $charCode <= 90) {
-                $characterTypes |= $characterTypesMask['upper'];
-                continue;
-            }
-
-            # 检查数字
-            if ($charCode >= 48 && $charCode <= 57) {
-                $characterTypes |= $characterTypesMask['digit'];
-                continue;
-            }
-
-            # 检查特殊字符（使用哈希表O(1)查找）
-            if (isset($specialCharMap[$char])) {
-                $characterTypes |= $characterTypesMask['special'];
-            }
-        }
-
-        # 5. 计算包含的类型数量（使用位运算）
-        $typeCount = 0;
-        foreach ($characterTypesMask as $mask) {
-            if (($characterTypes & $mask) !== 0) {
-                $typeCount++;
-            }
-        }
-
-        # 6. 强度检查
-        if ($typeCount < 3) {
-            throw new CommonException('密码应为字母、数字、特殊符号组合，6~16个字符');
-        }
-
-        # 7. 额外安全检查：连续字符和重复模式
-        if ($this->hasBadPattern($password)) {
-            throw new CommonException('密码包含不安全的模式（如连续字符或重复序列）');
-        }
-
     }
+
 
 }
