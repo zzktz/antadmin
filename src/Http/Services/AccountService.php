@@ -19,6 +19,11 @@ use Illuminate\Support\Facades\Storage;
 
 class AccountService
 {
+
+
+    protected const DEF_PASSWORD = 'a@123456';
+
+
     /**
      * 构造函数注入依赖
      */
@@ -28,7 +33,6 @@ class AccountService
         protected PermissionRepository  $permissionRepo,
         protected TokenRepository       $tokenRepo,
         protected AccountRoleRepository $accountRoleRepo,
-        protected IsPasswordService     $passwordService
     )
     {
         # 依赖已通过容器自动注入
@@ -89,7 +93,7 @@ class AccountService
     public function accountAdd(string $nickname, string $email, string $mobile, array $roles, string $password, int $opId): int
     {
         # 密码强度验证
-        $this->passwordService->handleIsPassword($password);
+        $this->checkPasswordStrength($password);
 
         # 权限验证
         if (!$this->accountRepo->isSuperAdmin($opId)) {
@@ -280,5 +284,97 @@ class AccountService
         return $imgUrl;
     }
 
+
+    /**
+     * 重置默认密码
+     * @param int $accountId
+     * @return void
+     */
+    public function reInitPassword(int $accountId)
+    {
+        $this->accountRepo->updatePassword(self::DEF_PASSWORD, $accountId);
+    }
+
+
+    /**
+     * 检查密码强度
+     * 要求：6-16位字符，至少包含字母大写、小写、数字、特殊符号 其中3种的组合
+     *
+     * @param string $password 待检查的密码
+     * @return void
+     */
+    private function checkPasswordStrength(string $password): void
+    {
+        # 1. 基本长度检查
+        $passwordLength = mb_strlen($password, 'UTF-8');
+        if ($passwordLength < 6 || $passwordLength > 16) {
+            throw new CommonException('密码长度应为6~16个字符');
+        }
+
+        # 2. 性能优化：提前检查常见弱密码
+        if ($this->isWeakPassword($password)) {
+            throw new CommonException('密码强度不足，请使用更复杂的密码');
+        }
+
+        # 3. 使用位运算记录字符类型（性能更好）
+        $characterTypes     = 0;
+        $characterTypesMask = [
+            'lower'   => 1,    # 0001
+            'upper'   => 2,    # 0010
+            'digit'   => 4,    # 0100
+            'special' => 8,    # 1000
+        ];
+
+        # 4. 单次遍历检查所有类型
+        $specialChars   = '!@#$%^&*()_+-="\'|>?`~';
+        $specialCharMap = array_flip(str_split($specialChars));
+
+        for ($i = 0; $i < $passwordLength; $i++) {
+            $char     = $password[$i];
+            $charCode = ord($char);
+
+            # 检查小写字母
+            if ($charCode >= 97 && $charCode <= 122) {
+                $characterTypes |= $characterTypesMask['lower'];
+                continue;
+            }
+
+            # 检查大写字母
+            if ($charCode >= 65 && $charCode <= 90) {
+                $characterTypes |= $characterTypesMask['upper'];
+                continue;
+            }
+
+            # 检查数字
+            if ($charCode >= 48 && $charCode <= 57) {
+                $characterTypes |= $characterTypesMask['digit'];
+                continue;
+            }
+
+            # 检查特殊字符（使用哈希表O(1)查找）
+            if (isset($specialCharMap[$char])) {
+                $characterTypes |= $characterTypesMask['special'];
+            }
+        }
+
+        # 5. 计算包含的类型数量（使用位运算）
+        $typeCount = 0;
+        foreach ($characterTypesMask as $mask) {
+            if (($characterTypes & $mask) !== 0) {
+                $typeCount++;
+            }
+        }
+
+        # 6. 强度检查
+        if ($typeCount < 3) {
+            throw new CommonException('密码应为字母、数字、特殊符号组合，6~16个字符');
+        }
+
+        # 7. 额外安全检查：连续字符和重复模式
+        if ($this->hasBadPattern($password)) {
+            throw new CommonException('密码包含不安全的模式（如连续字符或重复序列）');
+        }
+
+    }
 
 }

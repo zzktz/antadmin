@@ -64,26 +64,6 @@ class AccountController extends BaseController
         }
     }
 
-    /**
-     * 账号列表
-     */
-    public function accountList(Request $request)
-    {
-        try {
-            # 获取当前用户ID（假设从token或session获取）
-            $opId = $this->getCurrentAccountId($request);
-
-            $limit = $request->input('pageSize', 10);
-            if (!is_numeric($limit) || $limit < 1) {
-                $limit = 10;
-            }
-
-            $res = $this->accountService->accountList((int)$limit, $opId);
-            return Base::sucJson('成功', $res);
-        } catch (Exception $e) {
-            throw new CommonException('获取账号列表失败: ' . $e->getMessage());
-        }
-    }
 
 
     /**

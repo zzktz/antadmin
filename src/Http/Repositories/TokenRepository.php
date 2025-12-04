@@ -1,52 +1,61 @@
 <?php
 /**
- * token
+ * Token 相关仓储服务 (适配 Laravel-S / Swoole 环境)
+ * 负责 Token 的生成、验证、存储与管理
  */
 
 namespace Antmin\Http\Repositories;
 
+use Antmin\Models\Account;
 use Antmin\Exceptions\CommonException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Contracts\Redis\Connection;
+use Illuminate\Support\Facades\Log;
 
 class TokenRepository
 {
+    private const TOKEN_EXPIRE_MINUTES = 60 * 24 * 30;
+    private const MAX_TOKENS_PER_USER  = 3;
+    private const REDIS_KEY_PREFIX     = 'account_tokens:';
+    private const ROLE_NAME            = 'antadmin';
 
     /**
      * 构造函数注入依赖
+     * @param Account $accountModel 账户模型实例
+     * @param Connection $redisConnection Redis连接实例 (由容器注入默认连接)
      */
     public function __construct(
-        protected AccountRepository $accountRepo,
+        protected Account    $accountModel,
+        protected Connection $redisConnection # 注入 Redis 连接实例
     )
     {
-        # 依赖已通过容器自动注入
+        # Laravel 容器会自动解析并注入默认的 Redis 连接
     }
 
     /**
-     * 由 token 获取 id
+     * 由 token 解析并验证用户 ID
      * @param string $token
      * @return int
+     * @throws CommonException
      */
     public function getIdByToken(string $token): int
     {
         try {
             $payload = JWTAuth::setToken($token)->getPayload();
             $id      = $payload->get('sub');
-            $arr     = $payload->toArray();
-            $role    = $arr['role'];
-            if (empty($arr['role'])) {
+            $role    = $payload->get(self::ROLE_NAME, '');
+
+            if (empty($role)) {
                 throw new CommonException('Token 无角色设置');
             }
-            if ($role != 'antadmin') {
+            if ($role != self::ROLE_NAME) {
                 throw new CommonException('Token 非法角色');
             }
 
-            # SSO 情形下，检查是否有效
-            $isHas = self::isTokenExists($token, $id);
-            if (!$isHas) {
+            if (!$this->isTokenExists($token, $id)) {
                 throw new CommonException('超过终端最大许可数，设备下线。');
             }
             return $id;
@@ -55,74 +64,70 @@ class TokenRepository
         } catch (TokenInvalidException $e) {
             throw new CommonException('Token 无效，请重新获取');
         } catch (JWTException $e) {
-            throw new CommonException('Token 字段不存在');
+            Log::warning('JWT解析异常', ['exception' => $e->getMessage()]);
+            throw new CommonException('Token 字段不存在或格式错误');
         }
     }
 
-
     /**
-     * 获取 token 自定义设置过期时间
-     * @param int $accoutId
+     * 根据账户ID生成JWT Token
+     * @param int $accountId
      * @return string
+     * @throws CommonException
      */
-    public function getTokenById(int $accoutId): string
+    public function getTokenById(int $accountId): string
     {
-        # 设置过期时间 分钟
-        $expireTime  = 60 * 24 * 30;
-        $accountInfo = $this->accountRepo->getInfo($accoutId);
-        # 准备自定义声明
+        $accountInfo = $this->accountModel->find($accountId);
+        if (!$accountInfo) {
+            throw new CommonException('账户不存在，无法生成Token');
+        }
+
         $customClaims = [
-            'exp' => now()->addMinutes($expireTime)->timestamp,
-            'ttl' => $expireTime
+            'exp'           => now()->addMinutes(self::TOKEN_EXPIRE_MINUTES)->timestamp,
+            'ttl'           => self::TOKEN_EXPIRE_MINUTES,
+            self::ROLE_NAME => self::ROLE_NAME,
         ];
 
         $token = JWTAuth::claims($customClaims)->fromUser($accountInfo);
-        self::saveTokens($token, $accoutId);
+        $this->saveTokens($token, $accountId);
         return $token;
     }
 
-
     /**
-     * 保存 token 先进先出 失效token
+     * 保存token到Redis（先进先出淘汰机制）
      * @param string $token
      * @param int $id
      * @return void
      */
     private function saveTokens(string $token, int $id): void
     {
-        $key   = "account_tokens:" . $id;
-        $redis = Redis::connection('default');
+        $key = self::REDIS_KEY_PREFIX . $id;
+        # 使用注入的 redisConnection 实例
+        $redis = $this->redisConnection;
 
-        # 一个用户 最大可以拥有token 数量
-        $maxNum = 3;
-        # 毫秒
-        $milliseconds = intval(microtime(true) * 1000);
-        $redis->zadd($key, $milliseconds, $token); # 有序集合
-        $redis->expire($key, 86000 * 30);
-        # 删除
-        $hasMax = $redis->zcard($key); # 集合现有元素数量
-        $forNum = $hasMax - $maxNum;   # 循环次数
-        if ($forNum < 1) {
-            return;
-        }
-        for ($i = 0; $i < $forNum; $i++) {
-            $redis->zpopmin($key); # 删除分值最小的
-        }
+        # 使用流水线
+        $redis->pipeline(function ($pipe) use ($key, $token) {
+            $milliseconds = intval(microtime(true) * 1000);
+            $pipe->zadd($key, $milliseconds, $token);
+            $pipe->expire($key, 60 * 60 * 24 * 30);
+        });
+
+        # 原子化删除旧Token
+        $removeEndIndex = -(self::MAX_TOKENS_PER_USER + 1);
+        $redis->zremrangebyrank($key, 0, $removeEndIndex);
     }
 
     /**
-     * 判断 token 是否存在(有效)
-     *
+     * 判断指定用户的Token是否在有效集合中
      * @param string $token
      * @param int $id
      * @return bool
      */
     private function isTokenExists(string $token, int $id): bool
     {
-        $key   = "account_tokens:" . $id;
-        $redis = Redis::connection('default');
-        $res   = $redis->zrank($key, $token);
-        return $res !== false;
+        $key = self::REDIS_KEY_PREFIX . $id;
+        # 使用注入的 redisConnection 实例
+        $score = $this->redisConnection->zscore($key, $token);
+        return $score !== null;
     }
-
 }

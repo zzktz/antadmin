@@ -16,8 +16,7 @@ use Illuminate\Support\Facades\Hash;
 class AccountRepository
 {
     # 配置改为类常量
-    protected const SUPPER_ADMIN_IDS = [1];
-    protected const DEFAULT_PASSWORD = '123456';
+    protected const SUPPER_ADMIN_ID = 1;
 
     /**
      * 构造函数注入依赖
@@ -98,7 +97,7 @@ class AccountRepository
                     'email'    => $email,
                     'password' => $password
                         ? Hash::make(md5($password))
-                        : Hash::make(md5(self::DEFAULT_PASSWORD))
+                        : Hash::make(md5(str_random(12)))
                 ];
 
                 # 创建用户
@@ -214,14 +213,15 @@ class AccountRepository
         return $account ? $account->toArray() : [];
     }
 
-    public function getInfo(int $accountId)
+    public function getInfo(int $accountId): array
     {
-        return $this->accountModel->where('id', $accountId)->first();
+        $account = $this->accountModel->where('id', $accountId)->first();
+        return $account ? $account->toArray() : [];
     }
 
     public function isSuperAdmin(int $accountId): bool
     {
-        return in_array($accountId, self::SUPPER_ADMIN_IDS);
+        return $accountId == self::SUPPER_ADMIN_ID;
     }
 
     /**

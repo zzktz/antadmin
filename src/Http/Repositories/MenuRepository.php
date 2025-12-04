@@ -5,35 +5,47 @@
 
 namespace Antmin\Http\Repositories;
 
-use Antmin\Models\Menu as Model;
+use Antmin\Models\Menu;
 
-class MenuRepository extends Model
+class MenuRepository
 {
-    public static function add(array $info): int
+    public function __construct(
+        protected Menu $menuModel,
+    )
     {
-        return Model::create($info)->id;
+
     }
 
-    public static function edit(array $info, int $id): bool
+
+    public function add(array $info): int
     {
-        return Model::find($id)->update($info);
+        return $this->menuModel->create($info)->id;
     }
 
-    public static function del(int $id): bool
+    public function edit(array $info, int $id): bool
     {
-        return Model::find($id)->delete();
+        return $this->menuModel->find($id)->update($info);
     }
 
-    public static function getInfo(int $id): array
+    public function del(int $id): bool
     {
-        $arr = Model::getAllCacheData();
-        $res = collect($arr)->keyBy('id');
-        return $res->all()[$id] ?? [];
+        return $this->menuModel->find($id)->delete();
     }
 
-    public static function getDataByParentId(int $parentId): array
+    public function getInfo(int $id): array
     {
-        $allData  = Model::getAllCacheData();
+        $one = $this->menuModel->find($id);
+        return $one ? $one->toArray() : [];
+    }
+
+    public function getAllCacheData()
+    {
+        return $this->menuModel->getAllCacheData();
+    }
+
+    public function getDataByParentId(int $parentId): array
+    {
+        $allData  = $this->menuModel->getAllCacheData();
         $records  = collect($allData);
         $fRecords = $records->filter(function ($record) use ($parentId) {
             return $record['parent_id'] === $parentId;

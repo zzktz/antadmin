@@ -62,17 +62,7 @@ class PersonSetController extends BaseController
         return Base::sucJson('成功');
     }
 
-    /**
-     * 重新初始化密码
-     * @param $request
-     * @return mixed
-     */
-    public static function reInitPassword($request)
-    {
-        $accountId = Base::getValue($request, 'id', '', 'required|integer');
-        PersonSetService::reInitPassword($accountId);
-        return Base::sucJson('成功重置初始密码！');
-    }
+
 
 
 }

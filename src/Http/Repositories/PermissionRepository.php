@@ -3,25 +3,32 @@
 namespace Antmin\Http\Repositories;
 
 use Antmin\Common\Base;
-use Antmin\Exceptions\CommonException;
-use Antmin\Models\Permission as Model;
+use Antmin\Models\Permission;
+use Antmin\Models\Role;
 use Antmin\Models\RolePermission;
 use Antmin\Http\Resources\PermissionResource;
-use Exception;
 
-class PermissionRepository extends Model
+class PermissionRepository
 {
 
+    public function __construct(
+        protected Permission     $permissionModel,
+        protected RolePermission $rolePermissionModel,
+        protected Role           $roleModel,
+    )
+    {
+
+    }
 
     /**
      * 根据用户ID 获取 【全部权限】
      * @param int $accountId
      * @return array
      */
-    public static function getAllPermissionsByAccountId(int $accountId): array
+    public function getAllPermissionsByAccountId(int $accountId): array
     {
-        $allPermissionsIds = self::getAllPermissionsIdsByAccountId($accountId);
-        $allPermissionsArr = Model::whereIn('id', $allPermissionsIds)->get()->toArray();
+        $allPermissionsIds = $this->getAllPermissionsIdsByAccountId($accountId);
+        $allPermissionsArr = $this->permissionModel->whereIn('id', $allPermissionsIds)->get()->toArray();
         return $allPermissionsArr ?? [];
     }
 
@@ -30,13 +37,13 @@ class PermissionRepository extends Model
      * @param int $accountId
      * @return array
      */
-    public static function getAllPermissionsIdsByAccountId(int $accountId): array
+    public function getAllPermissionsIdsByAccountId(int $accountId): array
     {
-        if (AccountRepository::isSuperAdmin($accountId)) {
-            $allPermissionsIds = self::getAllPermissionsIds();
+        if ($accountId == 1) {
+            $allPermissionsIds = $this->getAllPermissionsIds();
         } else {
-            $roleIds           = RoleRepository::getRolesIdsByAccountId($accountId);
-            $allPermissionsIds = self::getAllPermissionsIdsByRoleIds($roleIds);
+            $roleIds           = $this->roleModel->getRolesIdsByAccountId($accountId);
+            $allPermissionsIds = $this->getAllPermissionsIdsByRoleIds($roleIds);
         }
         return $allPermissionsIds ?? [];
     }
@@ -46,10 +53,10 @@ class PermissionRepository extends Model
      * @param int $accountId
      * @return array
      */
-    public static function getParentPermissionsByAccountId(int $accountId): array
+    public function getParentPermissionsByAccountId(int $accountId): array
     {
-        $permissionIds     = self::getParentPermissionsIdsByAccountId($accountId);
-        $parentPermissions = Model::whereIn('id', $permissionIds)->get()->toArray();
+        $permissionIds     = $this->getParentPermissionsIdsByAccountId($accountId);
+        $parentPermissions = $this->permissionModel->whereIn('id', $permissionIds)->get()->toArray();
         return $parentPermissions ?? [];
     }
 
@@ -58,13 +65,13 @@ class PermissionRepository extends Model
      * @param int $accountId
      * @return array
      */
-    public static function getParentPermissionsIdsByAccountId(int $accountId): array
+    public function getParentPermissionsIdsByAccountId(int $accountId): array
     {
-        if (AccountRepository::isSuperAdmin($accountId)) {
-            $parentPermissionsIds = self::getParentPermissionsIds();
+        if ($accountId == 1) {
+            $parentPermissionsIds = $this->getParentPermissionsIds();
         } else {
-            $roleIds              = RoleRepository::getRolesIdsByAccountId($accountId);
-            $parentPermissionsIds = self::getParentPermissionsByRoleIds($roleIds);
+            $roleIds              = $this->roleModel->getRolesIdsByAccountId($accountId);
+            $parentPermissionsIds = $this->getParentPermissionsByRoleIds($roleIds);
         }
         return $parentPermissionsIds ?? [];
     }
@@ -74,13 +81,15 @@ class PermissionRepository extends Model
      * @param array $roleIds
      * @return array
      */
-    public static function getAllPermissionsIdsByRoleIds(array $roleIds): array
+    public function getAllPermissionsIdsByRoleIds(array $roleIds): array
     {
-        $supperRoleId = RoleRepository::getSupperRoleId();
+        $supperRoleId = $this->roleModel->getSupperRoleId();
         if (in_array($supperRoleId, $roleIds)) {
             $allPermission_ids = self::getAllPermissionsIds();
         } else {
-            $allPermission_ids = RolePermission::whereIn('role_id', $roleIds)->pluck('permission_id')->toArray();
+            $allPermission_ids = $this->rolePermissionModel->whereIn('role_id', $roleIds)
+                ->pluck('permission_id')
+                ->toArray();
         }
         return $allPermission_ids;
     }
@@ -90,10 +99,13 @@ class PermissionRepository extends Model
      * @param array $roleIds
      * @return array
      */
-    public static function getParentPermissionsByRoleIds(array $roleIds): array
+    public function getParentPermissionsByRoleIds(array $roleIds): array
     {
-        $parentPermissionIds = self::getParentPermissionsIdsByRoleIds($roleIds);
-        $data                = Model::whereIn('id', $parentPermissionIds)->get()->toArray();
+        $parentPermissionIds = $this->getParentPermissionsIdsByRoleIds($roleIds);
+
+        $data = $this->permissionModel->whereIn('id', $parentPermissionIds)
+            ->get()
+            ->toArray();
         return $data ?? [];
     }
 
@@ -102,13 +114,15 @@ class PermissionRepository extends Model
      * @param array $roleIds
      * @return array
      */
-    public static function getParentPermissionsIdsByRoleIds(array $roleIds): array
+    public function getParentPermissionsIdsByRoleIds(array $roleIds): array
     {
-        $supperRoleId = RoleRepository::getSupperRoleId();
+        $supperRoleId = $this->roleModel->getSupperRoleId();
         if (in_array($supperRoleId, $roleIds)) {
-            $parentPermissionIds = self::getParentPermissionsIds();
+            $parentPermissionIds = $this->getParentPermissionsIds();
         } else {
-            $parentPermissionIds = RolePermission::whereIn('role_id', $roleIds)->pluck('permission_id')->toArray();
+            $parentPermissionIds = $this->permissionModel->whereIn('role_id', $roleIds)
+                ->pluck('permission_id')
+                ->toArray();
         }
         return $parentPermissionIds;
     }
@@ -121,7 +135,7 @@ class PermissionRepository extends Model
      * @param int $isShowCheck
      * @return array|null 注意返回格式 空的时候返回 null
      */
-    public static function getTree(array $allPermission, int $id, int $isShowCheck = 0): ?array
+    public function getTree(array $allPermission, int $id, int $isShowCheck = 0): ?array
     {
         foreach ($allPermission as $k => $v) {
             if ($v['pid'] == $id) {
@@ -135,35 +149,35 @@ class PermissionRepository extends Model
         return empty($temp) ? null : array_values($temp);
     }
 
-    public static function getParentFormatToAccountList(int $limit): array
+    public function getParentFormatToAccountList(int $limit): array
     {
-        $datas = self::getParentList($limit);
+        $datas = $this->getParentList($limit);
         return PermissionResource::listToAccountList($datas);
     }
 
-    public static function getParentFormatToRoleList(int $limit): array
+    public function getParentFormatToRoleList(int $limit): array
     {
         $search['status'] = 1;
-        $datas            = self::getParentList($limit, $search);
+        $datas            = $this->getParentList($limit, $search);
         return PermissionResource::listToAccountList($datas);
     }
 
-    public static function getParentFormatList(int $limit): array
+    public function getParentFormatList(int $limit): array
     {
-        $datas = self::getParentList($limit);
+        $datas = $this->getParentList($limit);
         return PermissionResource::listToArray($datas);
     }
 
-    public static function getParentFormatTree(int $limit = 99): array
+    public function getParentFormatTree(int $limit = 99): array
     {
-        $datas = self::getParentList($limit);
+        $datas = $this->getParentList($limit);
         return PermissionResource::allToArray($datas);
     }
 
-    public static function getParentList(int $limit, array $serach = []): array
+    public function getParentList(int $limit, array $serach = []): array
     {
-        $query = Model::query();
-        if (isset($serach['status']) && !empty($serach['status'])) {
+        $query = $this->permissionModel->query();
+        if (!empty($serach['status'])) {
             $query->where('status', $serach['status']);
         }
         $query->where('pid', 0);
@@ -171,66 +185,64 @@ class PermissionRepository extends Model
         return Base::listFormat($limit, $query);
     }
 
-    public static function getChildList(int $id): array
+    public function getChildList(int $id): array
     {
-        return Model::where('pid', $id)->get()->toArray();
+        return $this->permissionModel->where('pid', $id)->get()->toArray();
     }
 
-    public static function getInfoByVidAndPid(string $vid, int $pid): array
+    public function getInfoByVidAndPid(string $vid, int $pid): array
     {
-        $one = Model::where('vid', $vid)->where('pid', $pid)->get()->first();
+        $one = $this->permissionModel->where('vid', $vid)
+            ->where('pid', $pid)
+            ->first();
         return !empty($one) ? $one->toArray() : [];
     }
 
-    public static function add(array $info): int
+    public function add(array $info): int
     {
-        try {
-            $one = Model::where('vid', $info['vid'])->where('pid', $info['pid'])->get()->first();
-            if (empty($one)) {
-                $one = Model::create($info);
-                if ($info['pid'] == 0) {
-                    self::autoAddChild($one['id']);
-                }
+
+        $one = $this->permissionModel->where('vid', $info['vid'])
+            ->where('pid', $info['pid'])
+            ->first();
+        if (empty($one)) {
+            $one = $this->permissionModel->create($info);
+            if ($info['pid'] == 0) {
+                $this->autoAddChild($one['id']);
             }
-            return $one['id'];
-        } catch (Exception $e) {
-            throw new CommonException($e->getMessage());
         }
+        return $one->id;
+
     }
 
-    public static function edit(array $info, int $id): bool
+    public function edit(array $info, int $id): bool
     {
-        try {
-            return Model::where('id', $id)->update($info);
-        } catch (Exception $e) {
-            throw new CommonException($e->getMessage());
-        }
+        return $this->permissionModel->where('id', $id)->update($info);
     }
 
-    public static function del(int $id): bool
+    public function del(int $id): bool
     {
-        Model::where('id', $id)->delete();
-        Model::where('pid', $id)->delete();
+        $this->permissionModel->where('id', $id)->delete();
+        $this->permissionModel->where('pid', $id)->delete();
         return true;
     }
 
-    public static function getInfo(int $id): array
+    public function getInfo(int $id): array
     {
-        $one = Model::where('id', $id)->get()->first();
+        $one = $this->permissionModel->where('id', $id)->first();
         return !empty($one) ? $one->toArray() : [];
     }
 
-    private static function getAllPermissionsIds(): array
+    private function getAllPermissionsIds(): array
     {
-        return Model::all()->pluck('id')->toArray();
+        return $this->permissionModel->all()->pluck('id')->toArray();
     }
 
-    private static function getParentPermissionsIds(): array
+    private function getParentPermissionsIds(): array
     {
-        return Model::where('pid', 0)->pluck('id')->toArray();
+        return $this->permissionModel->where('pid', 0)->pluck('id')->toArray();
     }
 
-    private static function autoAddChild($id)
+    private function autoAddChild(int $id): void
     {
         for ($x = 0; $x <= 3; $x++) {
             if ($x == 0) {
@@ -250,7 +262,7 @@ class PermissionRepository extends Model
             $add['action_rule'] = $vid ?? '';
             $add['title']       = $title ?? '';
             $add['pid']         = $id;
-            Model::create($add);
+            $this->permissionModel->create($add);
         }
     }
 
