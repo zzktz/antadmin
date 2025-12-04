@@ -254,7 +254,26 @@ class EnterController extends BaseController
 
     protected function accountEdit($request)
     {
-        return AccountController::accountEdit($request);
+        $opId = $request['accountId'];
+        $request->validate([
+            'id'       => 'required|integer',
+            'username' => 'required|max:50',
+            'email'    => 'nullable|email',
+            'mobile'   => 'required|regex:/^1[3-9]\d{9}$/',
+            'roles'    => 'required|array'
+        ]);
+
+        $id       = $request->input('id');
+        $nickname = $request->input('username');
+        $email    = $request->input('email', $request->input('mobile') . '@163.com');
+        $mobile   = $request->input('mobile');
+        $roles    = $request->input('roles');
+
+        $this->accountService->accountEdit(
+            $nickname, $email, $mobile, $roles, $id, $opId
+        );
+
+        return Base::sucJson('账号编辑成功');
     }
 
     protected function accountEditPassword($request)
@@ -262,9 +281,17 @@ class EnterController extends BaseController
         return AccountController::accountEditPassword($request);
     }
 
+    /**
+     *【账号管理】状态开关
+     * @param $request
+     * @return mixed
+     */
     protected function accountEditStatus($request)
     {
-        return AccountController::accountEditStatus($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $this->accountService->accountEditStatus($id, $opId);
+        return Base::sucJson('状态更新成功');
     }
 
     protected function accountDetail($request)
