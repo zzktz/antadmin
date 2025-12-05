@@ -4,15 +4,21 @@
 namespace Antmin\Http\Repositories;
 
 
-use Antmin\Models\AccountRole as Model;
+use Antmin\Models\AccountRole;
 
-class AccountRoleRepository extends Model
+class AccountRoleRepository
 {
 
-
-    public static function isInfoByRoleId(int $roleId): bool
+    public function __construct(
+        protected AccountRole $accountRoleModel,
+    )
     {
-        $one = Model::where('role_id', $roleId)->first();
+
+    }
+
+    public function isHasAccountByRoleId(int $roleId): bool
+    {
+        $one = $this->accountRoleModel->where('role_id', $roleId)->first();
         return !empty($one);
     }
 

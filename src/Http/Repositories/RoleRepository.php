@@ -25,7 +25,24 @@ class RoleRepository
     public function getFormatList(int $limit): array
     {
         $datas = $this->getList($limit);
-        return RoleResource::formatToList($datas);
+        if (empty($datas['data'])) {
+            return $datas;
+        }
+        $data = $datas['data'];
+        foreach ($data as $k => $v) {
+            $permissions = $this->permissionRepo->getAllPermissionsIdsByRoleIds([$v['id']]);
+
+            $rest[$k]                 = $v;
+            $rest[$k]['permissions']  = $permissions;
+            $rest[$k]['isShowDelete'] = $v['id'] == 1 ? 0 : 1;
+        }
+        $temp['current']  = $datas['pageNo'];
+        $temp['pageSize'] = $datas['pageSize'];
+        $temp['total']    = $datas['totalCount'];
+
+        $res['pagination'] = $temp;
+        $res['data']       = $rest ?? [];
+        return $res;
     }
 
     public function getFormatAccountList(int $limit): array
@@ -36,15 +53,18 @@ class RoleRepository
         }
 
         foreach ($datas['data'] as $k => $v) {
+            $permissions = $this->permissionRepo->getAllPermissionsIdsByRoleIds([$v['id']]);
+
             $rest[$k]['id']           = $v['id'];
             $rest[$k]['name']         = $v['vid'];
             $rest[$k]['title']        = $v['name'];
             $rest[$k]['status']       = $v['status'];
-            $rest[$k]['permissionId'] = $this->permissionRepo->getAllPermissionsIdsByRoleIds([$v['id']]);
+            $rest[$k]['permissionId'] = $permissions;
         }
-        $temp['current']   = $datas['pageNo'];
-        $temp['pageSize']  = $datas['pageSize'];
-        $temp['total']     = $datas['totalCount'];
+        $temp['current']  = $datas['pageNo'];
+        $temp['pageSize'] = $datas['pageSize'];
+        $temp['total']    = $datas['totalCount'];
+
         $res['pagination'] = $temp;
         $res['data']       = $rest ?? [];
         return $res;
@@ -57,27 +77,31 @@ class RoleRepository
         return Base::listFormat($limit, $query);
     }
 
-    public function add(string $vid, string $name, string $status): int
+    public function add(array $info): int
     {
-        $info['vid']    = $vid;
-        $info['name']   = $name;
-        $info['status'] = $status;
-        $one            = $this->roleModel->where('name', $name)->first();
-        if (!$one) {
-            $one = $this->roleModel->create($info);
-        }
-        return $one['id'];
+        $in['vid']  = $info['vid'];
+        $in['name'] = $info['name'];
+        return $this->roleModel->create($in)->id;
     }
 
     public function edit(array $info, int $id): bool
     {
-        return $this->roleModel->where('id', $id)->update($info);
+        $one = $this->roleModel->find($id);
+        return $one->update($info);
     }
 
     public function del(int $id): bool
     {
-        return $this->roleModel->where('id', $id)->delete();
+        $one = $this->roleModel->find($id);
+        return $one->delete();
     }
+
+    public function getInfo(int $id): array
+    {
+        $one = $this->roleModel->find($id);
+        return empty($one) ? [] : $one->toArray();
+    }
+
 
     /**
      * 一个账号的所有角色 信息
@@ -106,6 +130,12 @@ class RoleRepository
         return !empty($one) ? $one->toArray() : [];
     }
 
+
+    public function getInfoByVid(string $vid): array
+    {
+        $one = $this->roleModel->where('vid', $vid)->first();
+        return !empty($one) ? $one->toArray() : [];
+    }
 
     public function getSupperRoleId(): int
     {

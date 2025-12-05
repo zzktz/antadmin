@@ -16,20 +16,17 @@ class RequestLogService
 
     /**
      * 过滤请求的 url 特征值
-     * @var array|string[]
      */
-    protected static array $urlsToRemove = [
+    protected const URLS_TO_REMOVE = [
         'fileUpload', 'systemUploadEditor',
         'systemUploadOperate', 'requestLogOperate', 'systemLogsOperate',
     ];
 
     /**
      * 过滤请求 params 参数 key
-     * @var array|string[]
      */
-    protected static array $keysToRemove = [
-        'token', 'ReqClient', 'action', 'systemType',
-        'envVersion', 'page', 'requestUuid', 'openid', 'deviceId'
+    protected const KEYS_TO_REMOVE = [
+        'token', 'envVersion', 'page', 'reqUuid'
     ];
 
 
@@ -179,7 +176,7 @@ class RequestLogService
      */
     protected static function filterParams(array $param): array
     {
-        $keysToRemove = self::$keysToRemove;
+        $keysToRemove = self::KEYS_TO_REMOVE;
         return array_diff_key($param, array_flip($keysToRemove));
     }
 
@@ -189,8 +186,8 @@ class RequestLogService
     protected static function isFilterUrl(string $url): bool
     {
         if (empty($url)) return false;
-        return !empty(array_filter(self::$urlsToRemove, function ($item) use ($url) {
-            return strpos($url, $item) !== false;
+        return !empty(array_filter(self::URLS_TO_REMOVE, function ($item) use ($url) {
+            return str_contains($url, $item);
         }));
     }
 

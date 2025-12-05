@@ -15,85 +15,113 @@ use Antmin\Http\Repositories\RolePermissionsRepository;
 class RoleService
 {
 
-
-    public static function roleList(int $limit, int $opId): array
+    public function __construct(
+        protected RoleRepository            $roleRepo,
+        protected AccountRepository         $accountRepo,
+        protected PermissionRepository      $permissionRepo,
+        protected RolePermissionsRepository $rolePermissionsRepo,
+        protected AccountRoleRepository     $accountRoleRepo,
+    )
     {
-        if (!AccountRepository::isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
-        $res['roles'] = RoleRepository::getFormatList($limit);
-        $res['rules'] = PermissionRepository::getParentFormatToRoleList(99);
+
+    }
+
+    /**
+     * 列表
+     * @param int $limit
+     * @param int $accountId
+     * @return array
+     */
+    public function index(int $limit, int $accountId): array
+    {
+        # 权限验证
+        $this->checkPermissions($accountId);
+
+        $res['roles'] = $this->roleRepo->getFormatList($limit);
+        $res['rules'] = $this->permissionRepo->getParentFormatToRoleList(99);
         return $res;
     }
 
-    public static function roleAdd(string $vid, string $name, string $status, int $opId): int
+    /**
+     * 添加
+     * @param string $vid
+     * @param string $name
+     * @param int $accountId
+     * @return int
+     */
+    public function add(string $vid, string $name, int $accountId): int
     {
-        if (!AccountRepository::isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
+        # 权限验证
+        $this->checkPermissions($accountId);
+
+        $one = $this->roleRepo->getInfoByVid($vid);
+        if (!empty($one)) {
+            throw new CommonException('角色标识已存在');
         }
-        $info = RoleRepository::getInfoByName($name);
-        if ($info) {
+
+        $info = $this->roleRepo->getInfoByName($name);
+        if (!empty($info)) {
             throw new CommonException('角色名已存在');
         }
-        return RoleRepository::add($vid, $name, $status);
+
+        $info['vid']  = $vid;
+        $info['name'] = $name;
+        return $this->roleRepo->add($info);
     }
 
 
-    public static function edit(int $roleId, string $name, int $opId): bool
+    public function edit(array $info, int $id, int $accountId): bool
     {
-        if (!AccountRepository::isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
-        if ($roleId == RoleRepository::getSupperRoleId()) {
-            throw new CommonException('超级管理员角色不可编辑');
-        }
-        $info = RoleRepository::getInfoByName($name);
-        if ($info && $roleId != $info['id']) {
+        # 权限验证
+        $this->checkPermissions($accountId);
+        $this->checkSupperRoleId($id);
+
+        $name = $info['name'];
+        $one  = $this->roleRepo->getInfoByName($name);
+        if ($one && $id != $one['id']) {
             throw new CommonException('角色名已存在');
         }
         if (!empty($name)) {
             $up['name'] = $name;
-            RoleRepository::edit($up, $roleId);
+            $this->roleRepo->edit($up, $id);
         }
         return true;
     }
 
-    public static function roleDel(int $roleId, int $opId): bool
+    public function del(int $id, int $accountId): bool
     {
-        if (!AccountRepository::isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
-        if ($roleId == RoleRepository::getSupperRoleId()) {
-            throw new CommonException('超级管理员角色不可删除');
-        }
-        $isRes = AccountRoleRepository::isInfoByRoleId($roleId);
-        if ($isRes) {
+        # 权限验证
+        $this->checkPermissions($accountId);
+        $this->checkSupperRoleId($id);
+        # 判断角色中是否有成员
+        $isHas = $this->accountRoleRepo->isHasAccountByRoleId($id);
+        if ($isHas) {
             throw new CommonException('该角色存在账号中，请先处理');
         }
         # 删除角色关联的权限
-        RolePermissionsRepository::deleteByRoleId($roleId);
+        $this->permissionRepo->deleteByRoleId($id);
         # 删除角色
-        return RoleRepository::del($roleId);
+        return $this->roleRepo->del($id);
     }
 
-    public static function roleEditStatus(int $roleId, int $opId): bool
+    public function editStatus(int $id, int $accountId): bool
     {
-        if (!AccountRepository::isSuperAdmin($opId)) {
-            throw new CommonException('非超级管理员无权操作');
-        }
-        $info   = RoleRepository::find($roleId);
+        # 权限验证
+        $this->checkPermissions($accountId);
+        $this->checkSupperRoleId($id);
+        $info   = $this->roleRepo->getInfo($id);
         $status = empty($info['status']) ? 1 : 0;
-        return RoleRepository::where('id', $roleId)->update(['status' => $status]);
+        return $this->roleRepo->edit(['status' => $status], $id);
     }
 
 
-    public static function handleDelRolePermissions(int $roleId)
+    public function handleDelRolePermissions(int $id)
     {
-        return RolePermissionsRepository::deleteByRoleId($roleId);
+        return RolePermissionsRepository::deleteByRoleId($id);
     }
 
 
-    public static function handleAddRolePermissions(array $rules, int $roleId)
+    public function handleAddRolePermissions(array $rules, int $roleId)
     {
         if (empty($rules)) {
             return false;
@@ -113,5 +141,19 @@ class RoleService
         return true;
     }
 
+
+    private function checkPermissions(int $accountId): void
+    {
+        if (!$this->accountRepo->isSuperAdmin($accountId)) {
+            throw new CommonException('非超级管理员无权操作');
+        }
+    }
+
+    private function checkSupperRoleId(int $id): void
+    {
+        if ($id == $this->roleRepo->getSupperRoleId()) {
+            throw new CommonException('超级管理员角色不可删除');
+        }
+    }
 
 }

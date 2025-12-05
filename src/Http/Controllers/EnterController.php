@@ -12,6 +12,8 @@ use Antmin\Http\Services\LoginService;
 use Antmin\Http\Services\MenuService;
 use Antmin\Http\Services\PermissionsService;
 use Antmin\Http\Services\SmsService;
+use Antmin\Http\Services\RoleService;
+
 use Illuminate\Http\Request;
 
 class EnterController extends BaseController
@@ -27,7 +29,7 @@ class EnterController extends BaseController
         protected SmsService         $smsService,
         protected PermissionsService $permissionsService,
         protected MenuService        $menuService,
-
+        protected RoleService        $roleService,
     )
     {
         # 依赖已通过容器自动注入
@@ -81,7 +83,7 @@ class EnterController extends BaseController
     }
 
     /**
-     *  【个人信息】编辑
+     * 【个人信息】编辑
      * @param $request
      * @return mixed
      */
@@ -340,33 +342,70 @@ class EnterController extends BaseController
 
 
     /**
-     * 角色列表
+     * 【角色管理】列表
      * @param $request
      * @return mixed
      */
     protected function roleList($request)
     {
-        return RoleController::roleList($request);
+        $limit = 99;
+        $opId  = $request['accountId'];
+        $res   = $this->roleService->index($limit, $opId);
+        return Base::sucJson('成功', $res);
     }
 
+    /**
+     * 【角色管理】添加
+     * @param $request
+     * @return mixed
+     */
     protected function roleAdd($request)
     {
-        return RoleController::roleAdd($request);
+        $opId = $request['accountId'];
+        $vid  = Base::getValue($request, 'vid', '', 'required|letter|max:50');
+        $name = Base::getValue($request, 'name', '', 'required|max:50');
+        $this->roleService->add($vid, $name, $opId);
+        return Base::sucJson('添加成功');
     }
 
+    /**
+     * 【角色管理】编辑
+     * @param $request
+     * @return mixed
+     */
     protected function roleEdit($request)
     {
-        return RoleController::roleEdit($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $name = Base::getValue($request, 'name', '', 'required|max:50');
+        $this->roleService->edit(['name' => $name], $id, $opId);
+        return Base::sucJson('编辑成功');
     }
 
+    /**
+     * 【角色管理】更改状态
+     * @param $request
+     * @return mixed
+     */
     protected function roleEditStatus($request)
     {
-        return RoleController::roleEditStatus($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $this->roleService->editStatus($id, $opId);
+        return Base::sucJson('状态更新成功');
     }
 
+    /**
+     * 【角色管理】删除
+     * @param $request
+     * @return mixed
+     */
     protected function roleDel($request)
     {
-        return RoleController::roleDel($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $this->roleService->del($id, $opId);
+        return Base::sucJson('删除成功');
     }
 
     /**
