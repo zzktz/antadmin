@@ -5,7 +5,7 @@
 
 namespace Antmin\Http\Controllers;
 
-use Exception;
+
 use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\AccountService;
@@ -15,232 +15,132 @@ use Illuminate\Http\Request;
 class AccountController extends BaseController
 {
 
-    /**
-     * 构造函数注入依赖
-     */
-    public function __construct(
-        protected AccountService $accountService,
-        protected LoginService   $loginService
-    )
-    {
-        # 可在此添加中间件
-        # $this->middleware('auth')->except(['login']);
-    }
-
 
     /**
      * 登陆
+     * @param Request $request
+     * @return mixed
      */
     public function login(Request $request)
     {
-        try {
-            if ($request->has('username')) {
-                # 用户名密码登录
-                $request->validate([
-                    'username' => 'required|max:50',
-                    'password' => 'required|max:50'
-                ]);
-
-                $name     = $request->input('username');
-                $password = $request->input('password');
-                $token    = $this->loginService->accountLogin($name, $password);
-            } else {
-                # 手机验证码登录
-                $request->validate([
-                    'mobile'  => 'required|mobile',
-                    'captcha' => 'required|max:6'
-                ]);
-
-                $mobile  = $request->input('mobile');
-                $smscode = $request->input('captcha');
-
-                $token = $this->loginService->mobileLogin($mobile, $smscode);
+        $requdata = $request->all();
+        if (isset($requdata['username'])) {
+            $name     = Base::getValue($request, 'username', '', 'required|max:50');
+            $password = Base::getValue($request, 'password', '', 'required|max:50');
+            $token    = LoginService::accountLogin($name, $password);
+        } else {
+            $mobile = Base::getValue($request, 'mobile', '', 'required');
+            if (!Base::isMobile($mobile)) {
+                throw new CommonException('手机号格式不正确');
             }
-
-            return Base::sucJson('成功', ['token' => $token]);
-        } catch (Exception $e) {
-            # 系统异常
-            throw new CommonException('登录失败: ' . $e->getMessage());
+            $smscode = Base::getValue($request, 'captcha', '', 'required|max:6');
+            $token   = LoginService::mobileLogin($mobile, $smscode);
         }
+        return Base::sucJson('成功', ['token' => $token]);
     }
+
 
     /**
      * 账号列表
+     * @param $request
+     * @return mixed
      */
-    public function accountList(Request $request)
+    public static function accountList($request)
     {
-        try {
-            # 获取当前用户ID（假设从token或session获取）
-            $opId = $this->getCurrentAccountId($request);
-
-            $limit = $request->input('pageSize', 10);
-            if (!is_numeric($limit) || $limit < 1) {
-                $limit = 10;
-            }
-
-            $res = $this->accountService->accountList((int)$limit, $opId);
-            return Base::sucJson('成功', $res);
-        } catch (Exception $e) {
-            throw new CommonException('获取账号列表失败: ' . $e->getMessage());
-        }
+        $opId  = $request['accountId'];
+        $limit = Base::getValue($request, "pageSize", '', 'integer');
+        $limit = $limit ?? 10;
+        $res   = AccountService::accountList($limit, $opId);
+        return Base::sucJson('成功', $res);
     }
-
 
     /**
      * 账号添加
+     * @param $request
+     * @return mixed
      */
-    public function accountAdd(Request $request)
+    public static function accountAdd($request)
     {
-        try {
-            $opId = $this->getCurrentAccountId($request);
+        $opId     = $request['accountId'];
+        $nickname = Base::getValue($request, 'username', '', 'required|max:50');
+        $email    = Base::getValue($request, 'email', '', 'email');
+        $mobile   = Base::getValue($request, 'mobile', '', 'required|mobile');
+        $password = Base::getValue($request, 'password', '', 'required');
+        $roles    = Base::getValue($request, 'roles', '', 'required');
+        $email    = $email ?? $mobile . '@163.com';
 
-            $request->validate([
-                'username' => 'required|max:50',
-                'email'    => 'nullable|email',
-                'mobile'   => 'required|regex:/^1[3-9]\d{9}$/',
-                'password' => 'required|min:6',
-                'roles'    => 'required|array'
-            ]);
-
-            $nickname = $request->input('username');
-            $email    = $request->input('email', $request->input('mobile') . '@163.com');
-            $mobile   = $request->input('mobile');
-            $password = $request->input('password');
-            $roles    = $request->input('roles');
-
-            $userId = $this->accountService->accountAdd(
-                $nickname, $email, $mobile, $roles, $password, $opId
-            );
-
-            return Base::sucJson('账号添加成功', ['id' => $userId]);
-        } catch (Exception $e) {
-            throw new CommonException('添加账号失败: ' . $e->getMessage());
-        }
+        AccountService::accountAdd($nickname, $email, $mobile, $roles, $password, $opId);
+        return Base::sucJson('成功');
     }
 
     /**
      * 账号编辑
+     * @param $request
+     * @return mixed
      */
-    public function accountEdit(Request $request)
+    public static function accountEdit($request)
     {
-        try {
-            $opId = $this->getCurrentAccountId($request);
-
-            $request->validate([
-                'id'       => 'required|integer',
-                'username' => 'required|max:50',
-                'email'    => 'nullable|email',
-                'mobile'   => 'required|regex:/^1[3-9]\d{9}$/',
-                'roles'    => 'required|array'
-            ]);
-
-            $id       = (int)$request->input('id');
-            $nickname = $request->input('username');
-            $email    = $request->input('email', $request->input('mobile') . '@163.com');
-            $mobile   = $request->input('mobile');
-            $roles    = $request->input('roles');
-
-            $this->accountService->accountEdit(
-                $nickname, $email, $mobile, $roles, $id, $opId
-            );
-
-            return Base::sucJson('账号编辑成功');
-        } catch (Exception $e) {
-            throw new CommonException('编辑账号失败: ' . $e->getMessage());
-        }
+        $opId     = $request['accountId'];
+        $id       = Base::getValue($request, "id", '', 'required|integer');
+        $nickname = Base::getValue($request, 'username', '', 'required|max:50');
+        $email    = Base::getValue($request, 'email', '', 'email');
+        $mobile   = Base::getValue($request, 'mobile', '', 'required|mobile');
+        $roles    = Base::getValue($request, 'roles', '', 'required');
+        $email    = $email ?? $mobile . '@163.com';
+        AccountService::accountEdit($nickname, $email, $mobile, $roles, $id, $opId);
+        return Base::sucJson('成功');
     }
-
 
     /**
      * 账号更新密码
+     * @param $request
+     * @return mixed
      */
-    public function accountEditPassword(Request $request)
+    public static function accountEditPassword($request)
     {
-        try {
-            $opId = $this->getCurrentAccountId($request);
-
-            $request->validate([
-                'id'       => 'required|integer',
-                'password' => 'required|min:6'
-            ]);
-
-            $id       = (int)$request->input('id');
-            $password = $request->input('password');
-
-            $this->accountService->accountEditPassword($password, $id, $opId);
-
-            return Base::sucJson('密码更新成功');
-        } catch (Exception $e) {
-            throw new CommonException('更新密码失败: ' . $e->getMessage());
-        }
+        $opId     = $request['accountId'];
+        $id       = Base::getValue($request, "id", '', 'required|integer');
+        $password = Base::getValue($request, 'password', '', 'required');
+        AccountService::accountEditPassword($password, $id, $opId);
+        return Base::sucJson('成功');
     }
 
     /**
-     * 编辑账号状态
+     * 编辑列表中状态
+     * @param $request
+     * @return mixed
      */
-    public function accountEditStatus(Request $request)
+    public static function accountEditStatus($request)
     {
-        try {
-            $opId = $this->getCurrentAccountId($request);
-
-            $request->validate([
-                'id' => 'required|integer'
-            ]);
-
-            $id = (int)$request->input('id');
-
-            $this->accountService->accountEditStatus($id, $opId);
-
-            return Base::sucJson('状态更新成功');
-        } catch (Exception $e) {
-            throw new CommonException('更新状态失败: ' . $e->getMessage());
-        }
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, "id", '', 'required|integer');
+        AccountService::accountEditStatus($id, $opId);
+        return Base::sucJson('成功');
     }
-
 
     /**
      * 账号详情
+     * @param $request
+     * @return mixed
      */
-    public function accountDetail(Request $request)
+    public static function accountDetail($request)
     {
-        try {
-            $opId = $this->getCurrentAccountId($request);
-
-            $request->validate([
-                'id' => 'required|integer'
-            ]);
-
-            $id = (int)$request->input('id');
-
-            $res = $this->accountService->accountDetail($id, $opId);
-
-            return Base::sucJson('成功', $res);
-        } catch (Exception $e) {
-            throw new CommonException('获取账号详情失败: ' . $e->getMessage());
-        }
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, "id", '', 'required|integer');
+        $res  = AccountService::accountDetail($id, $opId);
+        return Base::sucJson('成功', $res);
     }
 
     /**
      * 账号删除
+     * @param $request
+     * @return mixed
      */
-    public function accountDel(Request $request)
+    public static function accountDel($request)
     {
-        try {
-            $opId = $this->getCurrentAccountId($request);
-
-            $request->validate([
-                'id' => 'required|integer'
-            ]);
-
-            $id = (int)$request->input('id');
-
-            $this->accountService->accountDel($id, $opId);
-
-            return Base::sucJson('账号删除成功');
-        } catch (Exception $e) {
-            throw new CommonException('删除账号失败: ' . $e->getMessage());
-        }
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, "id", '', 'required|integer');
+        AccountService::accountDel($id, $opId);
+        return Base::sucJson('成功');
     }
-
-
 }

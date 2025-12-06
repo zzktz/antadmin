@@ -1,40 +1,29 @@
 <?php
 /**
- * 账号服务
+ * 账号
  */
 
 namespace Antmin\Http\Repositories;
 
-use DB;
-use Exception;
 use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
-use Antmin\Models\Account as AccountModel;
-use Antmin\Models\AccountRole as AccountRoleModel;
+use Antmin\Models\Account as Model;
+use Antmin\Models\AccountRole;
+use Exception;
 use Illuminate\Support\Facades\Hash;
 
-class AccountRepository
+class AccountRepository extends Model
 {
-    # 配置改为类常量
-    protected const SUPPER_ADMIN_IDS = [1];
-    protected const DEFAULT_PASSWORD = '123456';
 
-    /**
-     * 构造函数注入依赖
-     */
-    public function __construct(
-        protected AccountModel         $accountModel,
-        protected AccountRoleModel     $accountRoleModel,
-        protected RoleRepository       $roleRepository,
-        protected PermissionRepository $permissionRepository
-    )
-    {
-        # 依赖已通过容器自动注入
-    }
 
-    public function getInfoFormat(int $id): array
+    # 定义超级管理员IDS
+    protected static array $supperAdminIds = [1];
+
+    protected static string $defaultPassword = '123456';
+
+    public static function getInfoFormat(int $id): array
     {
-        $one              = $this->getInfo($id);
+        $one              = self::getInfo($id);
         $info['id']       = $one['id'];
         $info['name']     = $one['name'];
         $info['username'] = $one['nickname'];
@@ -44,14 +33,12 @@ class AccountRepository
         return $info;
     }
 
-    public function getFormatList(int $limit): array
+    public static function getFormatList(int $limit): array
     {
-        $datas = $this->getList($limit);
+        $datas = self::getList($limit);
         if (empty($datas['data'])) {
             return $datas;
         }
-
-        $rest = [];
         foreach ($datas['data'] as $k => $v) {
             $rest[$k]['id']           = $v['id'];
             $rest[$k]['name']         = $v['name'];
@@ -60,183 +47,152 @@ class AccountRepository
             $rest[$k]['email']        = $v['email'];
             $rest[$k]['birthday']     = $v['birthday'];
             $rest[$k]['status']       = $v['status'];
-            $rest[$k]['rolesData']    = $this->roleRepository->getRolesByAccountId($v['id'], ['id', 'name']);
+            $rest[$k]['rolesData']    = RoleRepository::getRolesByAccountId($v['id'], ['id', 'name']);
             $rest[$k]['avatar']       = $v['avatar'] ? Base::fillUrl($v['avatar']) : '';
-            $rest[$k]['roles']        = $this->roleRepository->getRolesIdsByAccountId($v['id']);
-            $rest[$k]['rules']        = $this->permissionRepository->getAllPermissionsIdsByAccountId($v['id']);
-            $rest[$k]['isShowDelete'] = $this->isSuperAdmin($v['id']) ? 0 : 1;
+            $rest[$k]['roles']        = RoleRepository::getRolesIdsByAccountId($v['id']);
+            $rest[$k]['rules']        = PermissionRepository::getAllPermissionsIdsByAccountId($v['id']);
+            $rest[$k]['isShowDelete'] = self::isSuperAdmin($v['id']) ? 0 : 1;
         }
-
         $temp['current']   = $datas['pageNo'];
         $temp['pageSize']  = $datas['pageSize'];
         $temp['total']     = $datas['totalCount'];
         $res['pagination'] = $temp;
-        $res['data']       = $rest;
+        $res['data']       = $rest ?? [];
         return $res;
     }
 
-    public function getList(int $limit): array
+
+    public static function getList(int $limit): array
     {
-        $query = $this->accountModel->newQuery();
+        $query = Model::query();
         $query->orderBy('id', 'desc');
         return Base::listFormat($limit, $query);
     }
 
     /**
-     * 添加用户
+     * 添加
+     * @param string $name
+     * @param string $nickname
+     * @param string $email
+     * @param string $mobile
+     * @param array $roles
+     * @param string $password
+     * @return int
+     * @throws CommonException
      */
-    public function add(string $name, string $nickname, string $email, string $mobile, array $roles, string $password = ''): int
+    public static function add(string $name, string $nickname, string $email, string $mobile, array $roles, string $password): int
     {
         try {
-            # 使用事务确保数据一致性
-            return DB::transaction(function () use ($name, $nickname, $email, $mobile, $roles, $password) {
-                # 准备用户数据
-                $userData = [
-                    'name'     => $name,
-                    'nickname' => $nickname,
-                    'mobile'   => $mobile,
-                    'email'    => $email,
-                    'password' => $password
-                        ? Hash::make(md5($password))
-                        : Hash::make(md5(self::DEFAULT_PASSWORD))
-                ];
-
-                # 创建用户
-                $account = $this->accountModel->create($userData);
-
-                # 分配角色
-                foreach ($roles as $roleId) {
-                    $this->accountRoleModel->create([
-                        'account_id' => $account->id,
-                        'role_id'    => $roleId
-                    ]);
-                }
-
-                return $account->id;
-            });
+            $info['name']     = $name;
+            $info['nickname'] = $nickname;
+            $info['mobile']   = $mobile;
+            $info['email']    = $email;
+            $info['roles']    = $roles;
+            $info['password'] = $password ? Hash::make(md5($password)) : Hash::make(md5(self::$defaultPassword));
+            $resId            = Model::create($info)->id;
+            foreach ($roles as $v) {
+                AccountRole::create(['account_id' => $resId, 'role_id' => $v]);
+            }
+            return $resId;
         } catch (Exception $e) {
-            throw new CommonException('添加用户失败: ' . $e->getMessage());
+            throw new CommonException($e->getMessage());
         }
     }
 
+
     /**
      * 更新用户密码
+     * @param string $password 明文
+     * @param int $accountId
+     * @return bool
      */
-    public function updatePassword(string $password, int $accountId): bool
+    public static function updatePassword(string $password, int $accountId): bool
     {
         $encryptPassword = Hash::make(md5($password));
-        return $this->accountModel->where('id', $accountId)->update(['password' => $encryptPassword]);
+        return Model::where('id', $accountId)->update(['password' => $encryptPassword]);
     }
 
     /**
      * 编辑用户信息
+     * @param string $nickname
+     * @param string $email
+     * @param string $mobile
+     * @param array $roles
+     * @param int $accountId
+     * @return bool
      */
-    public function edit(string $nickname, string $email, string $mobile, array $roles, int $accountId): bool
+    public static function edit(string $nickname, string $email, string $mobile, array $roles, int $accountId): bool
     {
         try {
-            return DB::transaction(function () use ($nickname, $email, $mobile, $roles, $accountId) {
-                # 更新用户基本信息
-                $userData = [
-                    'nickname' => $nickname,
-                    'mobile'   => $mobile,
-                    'email'    => $email
-                ];
-                $this->accountModel->where('id', $accountId)->update($userData);
-
-                # 更新用户角色
-                $this->accountRoleModel->where('account_id', $accountId)->delete();
-                foreach ($roles as $roleId) {
-                    $this->accountRoleModel->create([
-                        'account_id' => $accountId,
-                        'role_id'    => $roleId
-                    ]);
-                }
-
-                return true;
-            });
+            $info['nickname'] = $nickname;
+            $info['mobile']   = $mobile;
+            $info['email']    = $email;
+            Model::where('id', $accountId)->update($info);
+            AccountRole::where('account_id', $accountId)->delete();
+            foreach ($roles as $v) {
+                AccountRole::create(['account_id' => $accountId, 'role_id' => $v]);
+            }
+            return true;
         } catch (Exception $e) {
-            throw new CommonException('编辑用户失败: ' . $e->getMessage());
+            throw new CommonException($e->getMessage());
         }
     }
 
     /**
      * 个人编辑
+     * @param array $info
+     * @param int $accountId
+     * @return bool
      */
-    public function personalEdit(array $info, int $accountId): bool
+    public static function personalEdit(array $info, int $accountId): bool
     {
         try {
-            return $this->accountModel->where('id', $accountId)->update($info);
+            return Model::where('id', $accountId)->update($info);
         } catch (Exception $e) {
-            throw new CommonException('更新个人信息失败: ' . $e->getMessage());
+            throw new CommonException($e->getMessage());
         }
     }
 
-    public function del(int $accountId): bool
+
+    public static function del(int $accountId): bool
     {
-        try {
-            return DB::transaction(function () use ($accountId) {
-                # 检查是否为超级管理员
-                if ($this->isSuperAdmin($accountId)) {
-                    throw new CommonException('不能删除超级管理员');
-                }
-
-                # 删除用户角色关联
-                $this->accountRoleModel->where('account_id', $accountId)->delete();
-
-                # 删除用户
-                return $this->accountModel->where('id', $accountId)->delete() > 0;
-            });
-        } catch (Exception $e) {
-            throw new CommonException('删除用户失败: ' . $e->getMessage());
-        }
+        Model::where('id', $accountId)->delete();
+        return AccountRole::where('account_id', $accountId)->delete();
     }
 
-    public function updateAvatar(string $avatar, int $accountId): bool
+    public static function updateAvatar(string $avatar, int $accountId): bool
     {
-        return $this->accountModel->where('id', $accountId)->update(['avatar' => $avatar]);
+        return Model::where('id', $accountId)->update(['avatar' => $avatar]);
     }
 
-    public function getInfoByName(string $name): array
+    public static function getInfoByName(string $name): array
     {
-        $account = $this->accountModel->where('name', $name)->first();
-        return $account ? $account->toArray() : [];
+        $one = Model::where('name', $name)->first();
+        return !empty($one) ? $one->toArray() : [];
     }
 
-    public function getInfoByMobile(string $mobile): array
+    public static function getInfoByMobile(string $mobile): array
     {
-        $account = $this->accountModel->where('mobile', $mobile)->first();
-        return $account ? $account->toArray() : [];
+        $one = Model::where('mobile', $mobile)->first();
+        return !empty($one) ? $one->toArray() : [];
     }
 
-    public function getInfoByEmail(string $email): array
+    public static function getInfoByEmail(string $email): array
     {
-        $account = $this->accountModel->where('email', $email)->first();
-        return $account ? $account->toArray() : [];
+        $one = Model::where('email', $email)->first();
+        return !empty($one) ? $one->toArray() : [];
     }
 
-    public function getInfo(int $accountId): array
+    public static function getInfo(int $accountId): array
     {
-        $account = $this->accountModel->where('id', $accountId)->first();
-        return $account ? $account->toArray() : [];
+        $one = Model::where('id', $accountId)->first();
+        return !empty($one) ? $one->toArray() : [];
     }
 
-    public function isSuperAdmin(int $accountId): bool
+    public static function isSuperAdmin(int $accountId): bool
     {
-        return in_array($accountId, self::SUPPER_ADMIN_IDS);
+        return in_array($accountId, self::$supperAdminIds);
     }
-
-    /**
-     * 验证用户密码
-     */
-    public function verifyPassword(string $password, int $accountId): bool
-    {
-        $account = $this->accountModel->where('id', $accountId)->first();
-        if (!$account) {
-            return false;
-        }
-        return Hash::check(md5($password), $account->password);
-    }
-
 
 
 }
