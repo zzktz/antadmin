@@ -43,7 +43,7 @@ class Menu extends Model
 
         return Cache::remember($cacheKey, $ttl, function () {
             # 建议：按需选择字段，提升效率
-            return self::all()->get()->toArray() ?: [];
+            return self::all()->toArray() ?? [];
         });
     }
 

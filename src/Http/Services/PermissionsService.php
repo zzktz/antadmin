@@ -63,8 +63,8 @@ class PermissionsService
             throw new CommonException('信息不存在');
         }
         $status = empty($one['status']) ? 1 : 0;
-        $this->permissionRepo->where('id', $id)->update(['status' => $status]);
-        $this->permissionRepo->where('pid', $id)->update(['status' => $status]);
+        $this->permissionRepo->edit(['status' => $status], $id);
+        $this->permissionRepo->editByPid(['status' => $status], $id);
         return true;
     }
 

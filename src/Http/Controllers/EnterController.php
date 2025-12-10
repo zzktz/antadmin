@@ -415,32 +415,55 @@ class EnterController extends BaseController
      */
     protected function permissionsList($request)
     {
-        return PermissionsController::permissionsList($request);
+        $opId  = $request['accountId'];
+        $limit = Base::getValue($request, "pageSize", '', 'integer');
+        $limit = $limit ?? 10;
+        $res   = $this->permissionsService->ruleList($limit, $opId);
+        return Base::sucJson('成功', $res);
     }
 
     protected function permissionsTree()
     {
-        return PermissionsController::permissionsTree();
+        $res = $this->permissionsService->ruleListTree();
+        return Base::sucJson('成功', $res);
     }
 
     protected function permissionsAdd($request)
     {
-        return PermissionsController::permissionsAdd($request);
+        $opId          = $request['accountId'];
+        $add['vid']    = Base::getValue($request, 'vid', '', 'required|letter|max:30');
+        $add['title']  = Base::getValue($request, 'title', '', 'required|max:50');
+        $add['pid']    = Base::getValue($request, 'pid', '', 'required|integer');
+        $add['status'] = 1;
+        $this->permissionsService->ruleAdd($add, $opId);
+        return Base::sucJson('成功');
     }
 
     protected function permissionsEdit($request)
     {
-        return PermissionsController::permissionsEdit($request);
+        $opId        = $request['accountId'];
+        $id          = Base::getValue($request, 'id', '', 'required|integer');
+        $up['vid']   = Base::getValue($request, 'vid', '', 'required|letter|max:30');
+        $up['title'] = Base::getValue($request, 'title', '', 'required|max:50');
+        $up['pid']   = Base::getValue($request, 'pid', '', 'integer');
+        $this->permissionsService->ruleEdit($up, $id, $opId);
+        return Base::sucJson('成功');
     }
 
     protected function permissionsEditStatus($request)
     {
-        return PermissionsController::permissionsEditStatus($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $this->permissionsService->ruleEditStatus($id, $opId);
+        return Base::sucJson('成功');
     }
 
     protected function permissionsDel($request)
     {
-        return PermissionsController::permissionsDel($request);
+        $opId = $request['accountId'];
+        $id   = Base::getValue($request, 'id', '', 'required|integer');
+        $this->permissionsService->ruleDel($id, $opId);
+        return Base::sucJson('成功');
     }
 
     /**

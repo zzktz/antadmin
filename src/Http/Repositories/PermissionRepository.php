@@ -219,6 +219,11 @@ class PermissionRepository
         return $this->permissionModel->where('id', $id)->update($info);
     }
 
+    public function editByPid(array $info, int $pid): bool
+    {
+        return $this->permissionModel->where('pid', $pid)->update($info);
+    }
+
     public function del(int $id): bool
     {
         $this->permissionModel->where('id', $id)->delete();
