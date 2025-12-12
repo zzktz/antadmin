@@ -16,7 +16,7 @@ class OperateLogController extends BaseController
 
 
     public function __construct(
-        OperateLogService $operateLogService,
+        protected OperateLogService $operateLogService,
     )
     {
     }
