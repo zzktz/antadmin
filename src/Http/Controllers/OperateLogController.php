@@ -19,7 +19,6 @@ class OperateLogController extends BaseController
         OperateLogService $operateLogService,
     )
     {
-
     }
 
 
@@ -35,7 +34,7 @@ class OperateLogController extends BaseController
      * @param $request
      * @return mixed
      */
-    protected function index($request)
+    public function index($request)
     {
         $limit                  = Base::getValue($request, 'pageSize', '', 'integer');
         $search['operate']      = Base::getValue($request, 'operate', '操作', 'max:99');
@@ -44,7 +43,6 @@ class OperateLogController extends BaseController
         $search['date_arr']     = Base::getValue($request, 'time', '', '');
         $limit                  = $limit ?? 10;
         $res                    = $this->operateLogService->getList($limit, $search);
-        $this->operateLogService->add('操作日志', '查看', '查看了操作日记列表');
         return sucJson('ok', $res);
     }
 
