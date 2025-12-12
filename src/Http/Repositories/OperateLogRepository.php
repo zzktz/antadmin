@@ -14,7 +14,7 @@ class OperateLogRepository
 
 
     public function __construct(
-        OperateLog $operateLog,
+        protected OperateLog $operateLog,
     )
     {
 
@@ -46,7 +46,7 @@ class OperateLogRepository
 
     public function add(array $info): int
     {
-        return $this->operateLogcreate($info)->id;
+        return $this->operateLog->operateLogcreate($info)->id;
     }
 
     public function getInfo(int $id): array
