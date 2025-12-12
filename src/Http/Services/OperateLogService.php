@@ -17,7 +17,8 @@ class OperateLogService
      * 构造函数注入依赖
      */
     public function __construct(
-        protected AccountRepository     $accountRepo,
+        protected AccountRepository    $accountRepo,
+        protected OperateLogRepository $operateLogRepo
     )
     {
     }
@@ -29,13 +30,13 @@ class OperateLogService
      * @param array $search
      * @return array
      */
-    public  function getList(int $limit, array $search): array
+    public function getList(int $limit, array $search): array
     {
         if (isset($search['date_arr']) && $search['date_arr']) {
             $search['start_at'] = !empty($search['date_arr']) ? reset($search['date_arr']) : '';
             $search['end_at']   = !empty($search['date_arr']) ? end($search['date_arr']) : '';
         }
-        $res =  $this->AccountRepository->getList($limit, $search);
+        $res = $this->operateLogRepo->getList($limit, $search);
         if (empty($res['data'])) {
             return $res;
         }
@@ -63,7 +64,7 @@ class OperateLogService
     public function add(string $operate, string $action, string $content = '')
     {
         $accountId         = request()['accountId'];
-        $accountInfo       = $this->AccountRepository->getInfo($accountId);
+        $accountInfo       = $this->accountRepo->getInfo($accountId);
         $accountName       = $accountInfo['username'];
         $operate           = Base::utf8Substr($operate, 50, 0);
         $action            = Base::utf8Substr($action, 50, 0);
@@ -71,7 +72,7 @@ class OperateLogService
         $add['action']     = $action;
         $add['account_id'] = $accountId;
         $add['content']    = $accountName . $content;
-        OperateLogRepository::add($add);
+        $this->operateLogRepo->add($add);
     }
 
 
