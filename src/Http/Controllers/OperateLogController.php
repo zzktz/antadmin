@@ -6,6 +6,7 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\OperateLogService;
 use Illuminate\Http\Request;
 
@@ -13,11 +14,20 @@ use Illuminate\Http\Request;
 class OperateLogController extends BaseController
 {
 
+
+    public function __construct(
+        OperateLogService $operateLogService,
+    )
+    {
+
+    }
+
+
     public function operate(Request $request)
     {
-        $action = Base::getValue($request, 'action', '', 'required');
-        if (method_exists(self::class, $action)) return self::$action($request);
-        return errJson('No find action');
+        $action = $request['action'];
+        if (method_exists(self::class, $action)) return $this->$action($request);
+        throw new CommonException('System Not Find Action');
     }
 
     /**
@@ -25,7 +35,7 @@ class OperateLogController extends BaseController
      * @param $request
      * @return mixed
      */
-    protected static function index($request)
+    protected function index($request)
     {
         $limit                  = Base::getValue($request, 'pageSize', '', 'integer');
         $search['operate']      = Base::getValue($request, 'operate', '操作', 'max:99');
@@ -33,8 +43,9 @@ class OperateLogController extends BaseController
         $search['account_name'] = Base::getValue($request, 'account_name', '', '');
         $search['date_arr']     = Base::getValue($request, 'time', '', '');
         $limit                  = $limit ?? 10;
-        $res                    = OperateLogService::getList($limit, $search);
-        OperateLogService::add('操作日志', '查看', '查看了操作日记列表');
+        $res                    = $this->operateLogService->getList($limit, $search);
+        $this->operateLogService->add('操作日志', '查看', '查看了操作日记列表');
         return sucJson('ok', $res);
     }
+
 }

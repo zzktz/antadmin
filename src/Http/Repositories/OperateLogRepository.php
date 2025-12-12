@@ -6,16 +6,24 @@
 namespace Antmin\Http\Repositories;
 
 use App\Common\Base;
-use App\Exceptions\CommonException;
-use Antmin\Models\OperateLog as Model;
-use Exception;
+use Antmin\Models\OperateLog;
 
-class OperateLogRepository extends Model
+
+class OperateLogRepository
 {
 
-    public static function getList(int $limit, array $search = []): array
+
+    public function __construct(
+        OperateLog $operateLog,
+    )
     {
-        $query = Model::query();
+
+    }
+
+
+    public function getList(int $limit, array $search = []): array
+    {
+        $query = $this->operateLog->query();
         if (!empty($search)) {
             if (isset($search['operate']) && $search['operate']) {
                 $query->where('operate', 'like', '%' . $search['operate'] . '%');
@@ -36,18 +44,14 @@ class OperateLogRepository extends Model
         return Base::listFormat($limit, $query);
     }
 
-    public static function add(array $info): int
+    public function add(array $info): int
     {
-        try {
-            return Model::create($info)->id;
-        } catch (Exception $e) {
-            throw new CommonException($e->getMessage());
-        }
+        return $this->operateLogcreate($info)->id;
     }
 
-    public static function getInfo(int $id): array
+    public function getInfo(int $id): array
     {
-        $one = Model::where('id', $id)->get()->first();
+        $one = $this->operateLog->where('id', $id)->first();
         return $one ? $one->toArray() : [];
     }
 

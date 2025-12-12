@@ -6,11 +6,22 @@
 namespace Antmin\Http\Services;
 
 use App\Common\Base;
-use Antmin\Http\Services\AccountService;
+use Antmin\Http\Repositories\AccountRepository;
 use Antmin\Http\Repositories\OperateLogRepository;
 
 class OperateLogService
 {
+
+
+    /**
+     * 构造函数注入依赖
+     */
+    public function __construct(
+        protected AccountRepository     $accountRepo,
+    )
+    {
+    }
+
 
     /**
      * 列表
@@ -18,13 +29,13 @@ class OperateLogService
      * @param array $search
      * @return array
      */
-    public static function getList(int $limit, array $search): array
+    public  function getList(int $limit, array $search): array
     {
         if (isset($search['date_arr']) && $search['date_arr']) {
             $search['start_at'] = !empty($search['date_arr']) ? reset($search['date_arr']) : '';
             $search['end_at']   = !empty($search['date_arr']) ? end($search['date_arr']) : '';
         }
-        $res = OperateLogRepository::getList($limit, $search);
+        $res =  $this->AccountRepository->getList($limit, $search);
         if (empty($res['data'])) {
             return $res;
         }
@@ -49,10 +60,10 @@ class OperateLogService
      * @param int $accountId
      * @param string $content
      */
-    public static function add(string $operate, string $action, string $content = '')
+    public function add(string $operate, string $action, string $content = '')
     {
         $accountId         = request()['accountId'];
-        $accountInfo       = AccountService::getAccountBaseInfo($accountId);
+        $accountInfo       = $this->AccountRepository->getInfo($accountId);
         $accountName       = $accountInfo['username'];
         $operate           = Base::utf8Substr($operate, 50, 0);
         $action            = Base::utf8Substr($action, 50, 0);
