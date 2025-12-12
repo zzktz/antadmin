@@ -6,7 +6,7 @@
     "php": "^8.2",
     "guzzlehttp/guzzle": "^7.0.1",
     "laravel/framework": "^12.00.1",
-    "tymon/jwt-auth": "^2.0.0",
+    "tymon/jwt-auth": "^2.10.1",
     "vladimir-yuldashev/laravel-queue-rabbitmq": "^14.0.0",
     "intervention/image": "^3.0.0"
   },
