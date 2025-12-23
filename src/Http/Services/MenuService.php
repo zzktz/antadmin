@@ -234,7 +234,7 @@ class MenuService
             throw new CommonException('菜单信息不存在');
         }
         $up['is_hide_children'] = empty($one['is_hide_children']) ? 1 : 0;
-        return $this->menuRepo->dit($up, $id);
+        return $this->menuRepo->edit($up, $id);
     }
 
 
