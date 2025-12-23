@@ -1,1 +1,1 @@
-antmin demo 2.0.39
+antmin demo 2.0.41
