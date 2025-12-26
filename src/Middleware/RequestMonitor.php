@@ -39,7 +39,7 @@ class RequestMonitor
             $arr['uuid']             = $uuid;
             $arr['url']              = $url;
             $arr['method']           = $method;
-            $arr['client']           = $request['ReqClient'] ?? '';
+            $arr['client']           = $request['reqClient'] ?? '';
             $arr['header']           = $header;
             $arr['params']           = $params;
             $arr['response_status']  = $response->getStatusCode();
