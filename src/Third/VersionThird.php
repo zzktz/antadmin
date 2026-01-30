@@ -27,8 +27,10 @@ class VersionThird
 
         $params['projectId']  = $projectId;
         $params['curVersion'] = $curVersion;
-        $resStr               = self::reqestUrl('POST', $appUrl, $params);
-        $resArr               = json_decode($resStr, true);
+
+        $resStr = self::reqestUrl('POST', $appUrl, $params);
+        $resArr = json_decode($resStr, true);
+
         if ($resArr['status'] == 'fail') {
             throw new CommonException($resArr['message']);
         }
