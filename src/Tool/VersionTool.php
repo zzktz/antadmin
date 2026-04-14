@@ -5,6 +5,7 @@
 
 namespace Antmin\Tool;
 
+use Antmin\Exceptions\CommonException;
 use Antmin\Third\VersionThird;
 
 
@@ -44,7 +45,7 @@ class VersionTool
         $fileContent = curl_exec($ch);
         #  检查是否有错误发生
         if (curl_errno($ch)) {
-            info('文件下载错误: ' . curl_error($ch));
+            throw new CommonException('文件下载错误: ' . curl_error($ch));
         }
         #  关闭 cURL 资源，并释放系统资源
         curl_close($ch);
