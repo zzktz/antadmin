@@ -4,20 +4,28 @@ use Illuminate\Support\Facades\Route;
 
 
 use Antmin\Http\Controllers\AccountController;
+use Antmin\Http\Controllers\EnterController;
+use Antmin\Http\Controllers\UploadController;
+use Antmin\Http\Controllers\VersionController;
+use Antmin\Http\Controllers\LogsController;
+use Antmin\Http\Controllers\ItemController;
+use Antmin\Http\Controllers\RequestLogController;
+use Antmin\Http\Controllers\OperateLogController;
+
 
 Route::group([
     'prefix'     => 'api/adminconsole/',
     'middleware' => 'antAuth'
 ], function () {
 
-    Route::any('systemLogin',        [AccountController::class, 'login']);
-    Route::any('systemUploadEditor', 'Antmin\Http\Controllers\UploadController@editorUpload');
-    Route::any('systemIndexOperate', 'Antmin\Http\Controllers\EnterController@operate');
-    Route::any('systemUploadOperate', 'Antmin\Http\Controllers\UploadController@operate');
-    Route::any('systemVersionOperate', 'Antmin\Http\Controllers\VersionController@operate');
-    Route::any('systemLogsOperate', 'Antmin\Http\Controllers\LogsController@operate');
-    Route::any('systemItemOperate', 'Antmin\Http\Controllers\ItemController@operate');
-    Route::any('requestLogOperate', 'Antmin\Http\Controllers\RequestLogController@operate');
-    Route::any('operateLogOperate', 'Antmin\Http\Controllers\OperateLogController@operate');
+    Route::any('systemLogin', [AccountController::class, 'login']);
+    Route::any('systemUploadEditor', [UploadController::class, 'editorUpload']);
+    Route::any('systemIndexOperate', [EnterController::class, 'operate']);
+    Route::any('systemUploadOperate', [UploadController::class, 'operate']);
+    Route::any('systemVersionOperate', [VersionController::class, 'operate']);
+    Route::any('systemLogsOperate', [LogsController::class, 'operate']);
+    Route::any('systemItemOperate', [ItemController::class, 'operate']);
+    Route::any('requestLogOperate', [RequestLogController::class, 'operate']);
+    Route::any('operateLogOperate', [OperateLogController::class, 'operate']);
 
 });

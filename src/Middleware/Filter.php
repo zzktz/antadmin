@@ -11,6 +11,7 @@ class Filter
     public static function getFilterMethod(): array
     {
         return [
+            'systemReg',
             'systemLogin',
             'systemUploadEditor',
         ];

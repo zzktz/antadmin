@@ -9,10 +9,8 @@ use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\AccountService;
 use Antmin\Http\Services\LoginService;
-use Antmin\Http\Services\MenuService;
-use Antmin\Http\Services\PermissionsService;
 use Antmin\Http\Services\SmsService;
-use Antmin\Http\Services\RoleService;
+
 
 use Illuminate\Http\Request;
 
@@ -24,12 +22,15 @@ class EnterController extends BaseController
      * 构造函数注入依赖
      */
     public function __construct(
-        protected AccountService     $accountService,
-        protected LoginService       $loginService,
-        protected SmsService         $smsService,
-        protected PermissionsService $permissionsService,
-        protected MenuService        $menuService,
-        protected RoleService        $roleService,
+        protected AccountService        $accountService,
+        protected LoginService          $loginService,
+        protected SmsService            $smsService,
+
+        protected MenuController        $menuController,
+        protected AccountController     $accountController,
+        protected RoleController        $roleController,
+        protected PermissionsController $permissionsController
+
     )
     {
         # 依赖已通过容器自动注入
@@ -82,388 +83,156 @@ class EnterController extends BaseController
         return Base::sucJson('成功', $res);
     }
 
-    /**
-     * 【个人信息】编辑
-     * @param $request
-     * @return mixed
-     */
-    protected function personalInfoEdit($request)
-    {
-        $accountId = $request['accountId'];
-        $email     = Base::getValue($request, 'email', '', 'email');
-        $mobile    = Base::getValue($request, 'mobile', '', 'mobile');
-        $nickname  = Base::getValue($request, 'nickname', '', 'alpha_dash|max:50');
-        $birthday  = Base::getValue($request, 'birthday', '', 'date_format:Y-m-d');
-        if (!empty($mobile)) {
-            $filed = 'mobile';
-            $value = $mobile;
-        } elseif (!empty($nickname)) {
-            $filed = 'nickname';
-            $value = $nickname;
-        } elseif (!empty($email)) {
-            $filed = 'email';
-            $value = $email;
-        } elseif (!empty($birthday)) {
-            $filed = 'birthday';
-            $value = $birthday;
-        } else {
-            $filed = '';
-            $value = '';
-        }
-        $this->accountService->personalEdit($filed, $value, $accountId);
-        return Base::sucJson('成功');
-    }
-
 
     /**
-     * 【菜单管理】左侧菜单
-     * @return mixed
+     * 菜单管理
      */
     public function getMenuNav($request)
     {
-        $opId = $request['accountId'];
-        $res  = $this->menuService->getMenuNav($opId);
-        return Base::sucJson('成功', $res);
+        return $this->menuController->getMenuNav($request);
     }
 
-    /**
-     * 【菜单管理】列表
-     * @param $request
-     * @return mixed
-     */
     public function menuList($request)
     {
-        $parentId = Base::getValue($request, 'parentId', '', 'integer');
-        $parentId = $parentId ?? 0;
-        $res      = $this->menuService->menuList($parentId);
-        return Base::sucJson('成功', $res);
+        return $this->menuController->menuList($request);
     }
 
-    /**
-     * 【菜单管理】 添加
-     * @param $request
-     * @return mixed
-     */
     public function menuAdd($request)
     {
-        $opId                  = $request['accountId'];
-        $info['parentId']      = Base::getValue($request, 'parentId', '', 'integer');
-        $info['title']         = Base::getValue($request, 'title', '', 'required|max:100');
-        $info['icon']          = Base::getValue($request, 'icon', '', 'max:100');
-        $info['pageName']      = Base::getValue($request, 'pageName', '', 'required|max:100');
-        $info['routePath']     = Base::getValue($request, 'routePath', '', 'required|max:100');
-        $info['component']     = Base::getValue($request, 'component', '', 'required|max:100');
-        $info['redirect']      = Base::getValue($request, 'redirect', '', 'max:200');
-        $info['permissionIds'] = Base::getValue($request, 'roles', '', 'array');
-        $this->menuService->menuAdd($info, $opId);
-        return Base::sucJson('成功');
+        return $this->menuController->menuAdd($request);
     }
 
-    /**
-     * 【菜单管理】编辑
-     * @param $request
-     * @return mixed
-     */
     public function menuEdit($request)
     {
-        $opId                  = $request['accountId'];
-        $id                    = Base::getValue($request, 'id', '', 'required|integer');
-        $info['parentId']      = Base::getValue($request, 'parentId', '', 'integer');
-        $info['title']         = Base::getValue($request, 'title', '', 'required|max:100');
-        $info['icon']          = Base::getValue($request, 'icon', '', 'max:100');
-        $info['pageName']      = Base::getValue($request, 'pageName', '', 'required|max:100');
-        $info['routePath']     = Base::getValue($request, 'routePath', '', 'required|max:100');
-        $info['component']     = Base::getValue($request, 'component', '', 'required|max:100');
-        $info['redirect']      = Base::getValue($request, 'redirect', '', 'max:200');
-        $info['permissionIds'] = Base::getValue($request, 'roles', '', 'array');
-        $this->menuService->menuEdit($info, $id, $opId);
-        return Base::sucJson('成功');
+        return $this->menuController->menuEdit($request);
     }
 
-    /**
-     * 【菜单管理】 删除
-     * @param $request
-     * @return mixed
-     */
     public function menuDel($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->menuService->menuDel($id, $opId);
-        return Base::sucJson('成功');
+        return $this->menuController->menuDel($request);
     }
 
-    /**
-     * 【菜单管理】排序
-     * @param $request
-     * @return mixed
-     */
     public function menuEditListorder($request)
     {
-        $opId      = $request['accountId'];
-        $id        = Base::getValue($request, 'id', '', 'required|integer');
-        $listorder = Base::getValue($request, 'listorder', '', 'required|integer');
-        $this->menuService->menuEditListorder($listorder, $id, $opId);
-        return Base::sucJson('成功');
+        return $this->menuController->menuEditListorder($request);
     }
 
-    /**
-     * 【菜单管理】设置是否显示页面
-     * @param $request
-     * @return mixed
-     */
     public function menuEditIsShow($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->menuService->menuEditIsShow($id, $opId);
-        return Base::sucJson('成功');
+        return $this->menuController->menuEditIsShow($request);
     }
 
-    /**
-     * 【菜单管理】设置是否隐藏子菜单
-     * @param $request
-     * @return mixed
-     */
     public function menuEditIsHideChildren($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->menuService->menuEditIsHideChildren($id, $opId);
-        return Base::sucJson('成功');
+        return $this->menuController->menuEditIsHideChildren($request);
     }
 
 
     /**
-     * 【账号管理】列表
-     * @param $request
-     * @return mixed
+     * 账号管理 个人信息编辑
      */
+    protected function personalInfoEdit($request)
+    {
+        return $this->accountController->personalInfoEdit($request);
+    }
+
+
     protected function accountList($request)
     {
-        $opId  = $request['accountId'];
-        $limit = Base::getValue($request, 'pageSize', '', 'integer');
-        $limit = $limit ?? 10;
-        $res   = $this->accountService->accountList($limit, $opId);
-        return Base::sucJson('成功', $res);
+        return $this->accountController->accountList($request);
     }
 
-    /**
-     *【账号管理】添加
-     * @param $request
-     * @return mixed
-     */
     protected function accountAdd($request)
     {
-        $opId = $request['accountId'];
-
-        $request->validate([
-            'username' => 'required|max:30',
-            'mobile'   => 'required|mobile',
-            'roles'    => 'required|array',
-            'email'    => 'nullable|email',
-            'password' => 'nullable|min:8'
-        ]);
-
-        $info['nickname'] = $request->input('username');
-        $info['email']    = $request->input('email', $request->input('mobile') . '@163.com');
-        $info['mobile']   = $request->input('mobile');
-        $info['password'] = $request->input('password');
-        $info['roles']    = $request->input('roles');
-
-        $userId = $this->accountService->accountAdd($info, $opId);
-
-        return Base::sucJson('账号添加成功', ['id' => $userId]);
+        return $this->accountController->accountAdd($request);
     }
 
-    /**
-     *【账号管理】编辑
-     * @param $request
-     * @return mixed
-     */
+
     protected function accountEdit($request)
     {
-        $opId = $request['accountId'];
-        $request->validate([
-            'id'       => 'required|integer',
-            'username' => 'required|max:50',
-            'email'    => 'required|email',
-            'mobile'   => 'required|regex:/^1[3-9]\d{9}$/',
-            'roles'    => 'required|array'
-        ]);
-        $id               = $request->input('id');
-        $info['nickname'] = $request->input('username');
-        $info['email']    = $request->input('email');
-        $info['mobile']   = $request->input('mobile');
-        $info['roles']    = $request->input('roles');
-
-        $this->accountService->accountEdit($info, $id, $opId);
-
-        return Base::sucJson('账号编辑成功');
+        return $this->accountController->accountEdit($request);
     }
 
-    /**
-     *【账号管理】状态开关
-     * @param $request
-     * @return mixed
-     */
+
     protected function accountEditStatus($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->accountService->editStatus($id, $opId);
-        return Base::sucJson('状态更新成功');
+        return $this->accountController->accountEditStatus($request);
     }
 
-    /**
-     * 【账号管理】删除
-     * @param $request
-     * @return mixed
-     */
+
     protected function accountDel($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->accountService->accountDel($id, $opId);
-        return Base::sucJson('删除成功');
+        return $this->accountController->accountDel($request);
     }
 
-    /**
-     * 【账号管理】重置密码
-     * @param $request
-     * @return mixed
-     */
     protected function reInitPassword($request)
     {
-        $id = Base::getValue($request, 'id', '', 'required|integer');
-        $this->accountService->reInitPassword($id);
-        return Base::sucJson('密码重置成功');
+        return $this->accountController->reInitPassword($request);
     }
 
-
     /**
-     * 【角色管理】列表
-     * @param $request
-     * @return mixed
+     * 角色管理
      */
     protected function roleList($request)
     {
-        $limit = 99;
-        $opId  = $request['accountId'];
-        $res   = $this->roleService->index($limit, $opId);
-        return Base::sucJson('成功', $res);
+        return $this->roleController->roleList($request);
     }
 
-    /**
-     * 【角色管理】添加
-     * @param $request
-     * @return mixed
-     */
+
     protected function roleAdd($request)
     {
-        $opId = $request['accountId'];
-        $vid  = Base::getValue($request, 'vid', '', 'required|letter|max:50');
-        $name = Base::getValue($request, 'name', '', 'required|max:50');
-        $this->roleService->add($vid, $name, $opId);
-        return Base::sucJson('添加成功');
+        return $this->roleController->roleAdd($request);
     }
 
-    /**
-     * 【角色管理】编辑
-     * @param $request
-     * @return mixed
-     */
+
     protected function roleEdit($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $name = Base::getValue($request, 'name', '', 'required|max:50');
-        $this->roleService->edit(['name' => $name], $id, $opId);
-        return Base::sucJson('编辑成功');
+        return $this->roleController->roleEdit($request);
     }
 
-    /**
-     * 【角色管理】更改状态
-     * @param $request
-     * @return mixed
-     */
+
     protected function roleEditStatus($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->roleService->editStatus($id, $opId);
-        return Base::sucJson('状态更新成功');
+        return $this->roleController->roleEditStatus($request);
     }
 
-    /**
-     * 【角色管理】删除
-     * @param $request
-     * @return mixed
-     */
+
     protected function roleDel($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->roleService->del($id, $opId);
-        return Base::sucJson('删除成功');
+        return $this->roleController->roleDel($request);
     }
 
     /**
      * 权限列表
-     * @param $request
-     * @return mixed
      */
     protected function permissionsList($request)
     {
-        $opId  = $request['accountId'];
-        $limit = Base::getValue($request, "pageSize", '', 'integer');
-        $limit = $limit ?? 10;
-        $res   = $this->permissionsService->ruleList($limit, $opId);
-        return Base::sucJson('成功', $res);
+        return $this->permissionsController->permissionsList($request);
     }
 
     protected function permissionsTree()
     {
-        $res = $this->permissionsService->ruleListTree();
-        return Base::sucJson('成功', $res);
+        return $this->permissionsController->permissionsTree();
     }
 
     protected function permissionsAdd($request)
     {
-        $opId          = $request['accountId'];
-        $add['vid']    = Base::getValue($request, 'vid', '', 'required|letter|max:30');
-        $add['title']  = Base::getValue($request, 'title', '', 'required|max:50');
-        $add['pid']    = Base::getValue($request, 'pid', '', 'required|integer');
-        $add['status'] = 1;
-        $this->permissionsService->ruleAdd($add, $opId);
-        return Base::sucJson('成功');
+        return $this->permissionsController->permissionsAdd($request);
     }
 
     protected function permissionsEdit($request)
     {
-        $opId        = $request['accountId'];
-        $id          = Base::getValue($request, 'id', '', 'required|integer');
-        $up['vid']   = Base::getValue($request, 'vid', '', 'required|letter|max:30');
-        $up['title'] = Base::getValue($request, 'title', '', 'required|max:50');
-        $up['pid']   = Base::getValue($request, 'pid', '', 'integer');
-        $this->permissionsService->ruleEdit($up, $id, $opId);
-        return Base::sucJson('成功');
+        return $this->permissionsController->permissionsEdit($request);
     }
 
     protected function permissionsEditStatus($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->permissionsService->ruleEditStatus($id, $opId);
-        return Base::sucJson('成功');
+        return $this->permissionsController->permissionsEditStatus($request);;
     }
 
     protected function permissionsDel($request)
     {
-        $opId = $request['accountId'];
-        $id   = Base::getValue($request, 'id', '', 'required|integer');
-        $this->permissionsService->ruleDel($id, $opId);
-        return Base::sucJson('成功');
+        return $this->permissionsController->permissionsDel($request);
     }
 
     /**
