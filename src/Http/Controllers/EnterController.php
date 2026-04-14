@@ -9,6 +9,7 @@ use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\AccountService;
 use Antmin\Http\Services\LoginService;
+use Antmin\Http\Services\PermissionsService;
 use Antmin\Http\Services\SmsService;
 
 
@@ -25,6 +26,7 @@ class EnterController extends BaseController
         protected AccountService        $accountService,
         protected LoginService          $loginService,
         protected SmsService            $smsService,
+        protected PermissionsService $permissionsService,
 
         protected MenuController        $menuController,
         protected AccountController     $accountController,

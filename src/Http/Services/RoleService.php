@@ -98,8 +98,6 @@ class RoleService
         if ($isHas) {
             throw new CommonException('该角色存在账号中，请先处理');
         }
-        # 删除角色关联的权限
-        $this->permissionRepo->deleteByRoleId($id);
         # 删除角色
         return $this->roleRepo->del($id);
     }
@@ -112,33 +110,6 @@ class RoleService
         $info   = $this->roleRepo->getInfo($id);
         $status = empty($info['status']) ? 1 : 0;
         return $this->roleRepo->edit(['status' => $status], $id);
-    }
-
-
-    public function handleDelRolePermissions(int $id)
-    {
-        return RolePermissionsRepository::deleteByRoleId($id);
-    }
-
-
-    public function handleAddRolePermissions(array $rules, int $roleId)
-    {
-        if (empty($rules)) {
-            return false;
-        }
-        foreach ($rules as $permissionId) {
-            $one = PermissionRepository::find($permissionId);
-            $pid = !empty($one['pid']) ? $one['pid'] : 0;
-            $two = RolePermissionsRepository::where('role_id', $pid)->where('permission_id', $permissionId)->get()->first();
-            if (empty($two) && $pid > 0) {
-                RolePermissionsRepository::add($roleId, $pid);
-            }
-            $three = RolePermissionsRepository::where('role_id', $roleId)->where('permission_id', $permissionId)->get()->first();
-            if (empty($three)) {
-                RolePermissionsRepository::add($roleId, $permissionId);
-            }
-        }
-        return true;
     }
 
 
