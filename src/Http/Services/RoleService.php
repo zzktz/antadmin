@@ -111,7 +111,7 @@ class RoleService
         $status = empty($info['status']) ? 1 : 0;
         return $this->roleRepo->edit(['status' => $status], $id);
     }
-
+    
 
     private function checkPermissions(int $accountId): void
     {

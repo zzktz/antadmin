@@ -41,8 +41,11 @@ class LoginService
         # 安全检查
         SafeService::checking();
         try {
+
             if (Base::isMobile($name)) {
                 $info = $this->accountRepo->getInfoByMobile($name);
+            } elseif (Base::isEmail($name)) {
+                $info = $this->accountRepo->getInfoByEmail($name);
             } else {
                 $info = $this->accountRepo->getInfoByName($name);
             }
@@ -67,6 +70,47 @@ class LoginService
             throw new CommonException($msg);
         }
     }
+
+    /**
+     * 邮箱注册
+     * @param string $email
+     * @param string $code
+     * @param string $password
+     * @return bool
+     */
+    public function register(string $email, string $code, string $password): bool
+    {
+        $one = $this->accountRepo->getInfoByEmail($email);
+        if (!empty($one)) {
+            throw new CommonException('邮箱已注册');
+        }
+        $verify = EmailService::verifyCode($email, $code);
+        if (empty($verify)) {
+            throw new CommonException('邮箱验证码不正确');
+        }
+        # 进行注册
+        $info['password'] = Hash::make($password);
+        $info['email']    = $email;
+        $info['roles']    = [4];
+        $this->accountRepo->add($info);
+        return true;
+    }
+
+    /**
+     * 发送邮件验证码
+     * @param string $email
+     * @return bool
+     */
+    public function sendCodeByEmail(string $email): bool
+    {
+        $info = $this->accountRepo->getInfoByEmail($email);
+        if (empty($info)) {
+            throw new CommonException('邮箱未注册');
+        }
+        EmailService::sendCode($email);
+        return true;
+    }
+
 
     /**
      * 短信登陆

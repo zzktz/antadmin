@@ -31,18 +31,7 @@ class AccountRepository
     {
         # 依赖已通过容器自动注入
     }
-
-    public function getInfoFormat(int $id): array
-    {
-        $one              = $this->getInfo($id);
-        $info['id']       = $one['id'];
-        $info['name']     = $one['name'];
-        $info['username'] = $one['nickname'];
-        $info['mobile']   = $one['mobile'];
-        $info['email']    = $one['email'];
-        $info['avatar']   = !empty($one['avatar']) ? Base::fillUrl($one['avatar']) : '';
-        return $info;
-    }
+    
 
     public function getFormatList(int $limit): array
     {
@@ -90,13 +79,16 @@ class AccountRepository
         try {
             # 使用事务确保数据一致性
             return DB::transaction(function () use ($info) {
+
+                $password = !empty($info['password']) ? $info['password'] : Hash::make(md5(str_random(12)));
+
                 # 准备用户数据
                 $userData = [
                     'name'     => $info['name'],
                     'nickname' => $info['nickname'],
                     'mobile'   => $info['mobile'],
                     'email'    => $info['email'],
-                    'password' => !empty($password) ? Hash::make(md5($password)) : Hash::make(md5(str_random(12)))
+                    'password' => $password
                 ];
                 # 创建用户
                 $account = $this->accountModel->create($userData);

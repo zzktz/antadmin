@@ -66,6 +66,40 @@ class AccountController extends BaseController
 
 
     /**
+     * 注册
+     */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|min:8',
+            'captcha'  => 'required|max:6'
+        ]);
+
+        $email    = $request->input('email');
+        $captcha  = $request->input('captcha');
+        $password = $request->input('password');
+
+        $this->loginService->register($email, $captcha,$password);
+        return Base::sucJson('成功');
+    }
+
+    /**
+     * 发送邮件验证码
+     */
+    public function sendCodeByEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $email = $request->input('email');
+        $this->loginService->sendCodeByEmail($email);
+        return Base::sucJson('邮件验证码已发送');
+    }
+
+
+    /**
      * 【个人信息】编辑
      */
     public function personalInfoEdit($request)

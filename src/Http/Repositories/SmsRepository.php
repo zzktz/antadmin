@@ -7,7 +7,8 @@ use Antmin\Exceptions\CommonException;
 use Antmin\Models\SmsReport;
 use Antmin\Third\SmsThird;
 use Exception;
-# use Illuminate\Contracts\Redis\Connection;
+
+
 use Illuminate\Redis\Connections\Connection as RedisConnection;
 
 class SmsRepository # 不再继承 Model，改为一个纯粹的服务类
@@ -50,7 +51,7 @@ class SmsRepository # 不再继承 Model，改为一个纯粹的服务类
 
     public function checkSmsCode(string $mobile, string $smsCode, bool $isSingle = true): bool
     {
-        if ($smsCode == self::CODE_DEV_DEFAULT) {
+        if (env('APP_ENV') == 'dev' && $smsCode == self::CODE_DEV_DEFAULT) {
             return true;
         }
 
@@ -88,7 +89,6 @@ class SmsRepository # 不再继承 Model，改为一个纯粹的服务类
     {
         return Base::utf8_str_replace(static::class, '\\', '_') . '_' . $key;
     }
-
 
 
 }

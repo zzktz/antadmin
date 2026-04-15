@@ -53,6 +53,15 @@ class Base
         }
     }
 
+    public static function isEmail(string $email): bool
+    {
+        return Validator::make(
+            ['email' => $email],
+            ['email' => 'email']  // 添加规则
+        )->passes();
+    }
+
+
     /**
      * 图片上传地址
      * @param string $savePath
