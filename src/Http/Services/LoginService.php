@@ -104,8 +104,8 @@ class LoginService
     public function sendCodeByEmail(string $email): bool
     {
         $info = $this->accountRepo->getInfoByEmail($email);
-        if (empty($info)) {
-            throw new CommonException('邮箱未注册');
+        if (!empty($info)) {
+            throw new CommonException('邮箱已注册');
         }
         EmailService::sendCode($email);
         return true;

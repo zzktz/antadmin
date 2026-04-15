@@ -70,17 +70,11 @@ class AccountController extends BaseController
      */
     public function register(Request $request)
     {
-        $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|min:8',
-            'captcha'  => 'required|max:6'
-        ]);
+        $email    = Base::getValue($request, 'email', '', 'email');
+        $captcha  = Base::getValue($request, 'captcha', '', 'required|min:6');
+        $password = Base::getValue($request, 'password', '', 'required|min:8');
 
-        $email    = $request->input('email');
-        $captcha  = $request->input('captcha');
-        $password = $request->input('password');
-
-        $this->loginService->register($email, $captcha,$password);
+        $this->loginService->register($email, $captcha, $password);
         return Base::sucJson('成功');
     }
 
@@ -89,11 +83,7 @@ class AccountController extends BaseController
      */
     public function sendCodeByEmail(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $email = $request->input('email');
+        $email = Base::getValue($request, 'email', '', 'email');
         $this->loginService->sendCodeByEmail($email);
         return Base::sucJson('邮件验证码已发送');
     }
