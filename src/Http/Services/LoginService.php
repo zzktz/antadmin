@@ -78,7 +78,7 @@ class LoginService
      * @param string $password
      * @return string
      */
-    public function register(string $email, string $code, string $password): static
+    public function register(string $email, string $code, string $password): string
     {
         $one = $this->accountRepo->getInfoByEmail($email);
         if (!empty($one)) {
