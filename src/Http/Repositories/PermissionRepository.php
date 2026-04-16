@@ -45,7 +45,7 @@ class PermissionRepository
             $roleIds           = $this->roleModel->getRolesIdsByAccountId($accountId);
             $allPermissionsIds = $this->getAllPermissionsIdsByRoleIds($roleIds);
         }
-        return $allPermissionsIds ?? [];
+        return $allPermissionsIds;
     }
 
     /**
@@ -73,7 +73,7 @@ class PermissionRepository
             $roleIds              = $this->roleModel->getRolesIdsByAccountId($accountId);
             $parentPermissionsIds = $this->getParentPermissionsByRoleIds($roleIds);
         }
-        return $parentPermissionsIds ?? [];
+        return $parentPermissionsIds;
     }
 
     /**
@@ -183,11 +183,6 @@ class PermissionRepository
         $query->where('pid', 0);
         $query->orderBy('id', 'desc');
         return Base::listFormat($limit, $query);
-    }
-
-    public function getChildList(int $id): array
-    {
-        return $this->permissionModel->where('pid', $id)->get()->toArray();
     }
 
     public function getInfoByVidAndPid(string $vid, int $pid): array
