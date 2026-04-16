@@ -229,7 +229,7 @@ class EnterController extends BaseController
 
     protected function permissionsEditStatus($request)
     {
-        return $this->permissionsController->permissionsEditStatus($request);;
+        return $this->permissionsController->permissionsEditStatus($request);
     }
 
     protected function permissionsDel($request)
