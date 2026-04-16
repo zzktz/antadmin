@@ -59,11 +59,12 @@ class AccountService
         if (empty($account)) {
             throw new CommonException('用户信息不存在');
         }
-
+        $roleName = $this->roleRepo->getRoleNameByAccountId($accountId);
         return [
             'id'       => $account['id'],
             'name'     => $account['name'],
             'username' => $account['nickname'],
+            'roleName' => $roleName,
             'mobile'   => $account['mobile'],
             'email'    => $account['email'],
             'birthday' => $account['birthday'],

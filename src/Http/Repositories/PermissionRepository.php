@@ -56,9 +56,6 @@ class PermissionRepository
     public function getParentPermissionsByAccountId(int $accountId): array
     {
         $permissionIds     = $this->getParentPermissionsIdsByAccountId($accountId);
-
-        info($permissionIds);
-
         $parentPermissions = $this->permissionModel->whereIn('id', $permissionIds)->get()->toArray();
         return $parentPermissions ?? [];
     }

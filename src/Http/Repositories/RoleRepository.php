@@ -103,6 +103,15 @@ class RoleRepository
     }
 
 
+    public function getRoleNameByAccountId(int $accountId): string
+    {
+        $arr = $this->roleModel->getRolesByAccountId($accountId, ['name']);
+        if (empty($arr)) {
+            return '';
+        }
+        return $arr[0]['name'] ?? '';
+    }
+
     /**
      * 一个账号的所有角色 信息
      * @param int $accountId
@@ -113,6 +122,7 @@ class RoleRepository
     {
         return $this->roleModel->getRolesByAccountId($accountId, $column);
     }
+
 
     /**
      * 一个账号的所有角色
