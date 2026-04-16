@@ -80,13 +80,13 @@ class AccountRepository
             # 使用事务确保数据一致性
             return DB::transaction(function () use ($info) {
 
-                $password = !empty($info['password']) ? $info['password'] : Hash::make(md5(str_random(12)));
-
+                $password   = !empty($info['password']) ? $info['password'] : Hash::make(md5(str_random(12)));
+                $randomName = random(8, 'abcdefghijklmnopqrstuvwyz');
                 # 准备用户数据
                 $userData = [
-                    'name'     => $info['name'] ?? random(8, 'abcdefghijklmnopqrstuvwyz'),
-                    'nickname' => $info['nickname'],
-                    'mobile'   => $info['mobile'],
+                    'name'     => $info['name'] ?? $randomName,
+                    'nickname' => $info['nickname'] ?? $randomName,
+                    'mobile'   => $info['mobile'] ?? null,
                     'email'    => $info['email'],
                     'password' => $password
                 ];
