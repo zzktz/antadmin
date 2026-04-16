@@ -42,8 +42,8 @@ class Middleware
         if (empty($token)) {
             throw new CommonException('Access-Token 不存在');
         }
-
-        $request['accountId'] = $this->accountService->getAccountIdByToken($token);
+        $accountId            = $this->accountService->getAccountIdByToken($token);
+        $request['accountId'] = $accountId;
         return $next($request);
     }
 

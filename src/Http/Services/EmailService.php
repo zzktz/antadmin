@@ -29,7 +29,7 @@ class EmailService
             $flag = $key . '_flag';
             $code = Base::random(6);
             if (Redis::get($flag)) {
-                throw new CommonException('请求太频繁，最大允许每分钟请求一次');
+                throw new CommonException('请求太频繁，最大允许每分获取一次验证码');
             }
             # 开始发送邮件
 
@@ -39,7 +39,7 @@ class EmailService
 
             # 发送成功，进行缓存
             Redis::setex($key, self::CACHE_OUT_TIME, $code);
-            Redis::setex($flag, 60, 1);
+            Redis::setex($flag, 60, 1); # 每分钟获取一次标识
             return true;
 
         } catch (Exception $e) {
@@ -50,10 +50,6 @@ class EmailService
 
     public static function verifyCode(string $email, string $code): bool
     {
-        if (env('APP_ENV') == 'dev' && $code == '123456') {
-            return true;
-        }
-
         $key = md5($email);
         if (!Redis::exists($key)) {
             return false;
