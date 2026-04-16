@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Mail;
 class EmailService
 {
 
-    protected const CACHE_OUT_TIME = 900;
-
+    protected const CACHE_OUT_TIME  = 900;
+    protected const ONE_DAY_MAX_NUM = 10; # 一天最大发送量
 
     public static function test()
     {
@@ -25,21 +25,33 @@ class EmailService
     public static function sendCode(string $email): bool
     {
         try {
-            $key  = md5($email);
-            $flag = $key . '_flag';
-            $code = Base::random(6);
-            if (Redis::get($flag)) {
+            $key     = md5($email);
+            $code    = Base::random(6);
+            $flagMin = $key . '_flag_min';
+
+            # 每分钟限制
+            if (Redis::get($flagMin)) {
                 throw new CommonException('请求太频繁，最大允许每分获取一次验证码');
             }
-            # 开始发送邮件
 
+            # 每日限制（补全部分）
+            $dayKey   = $key . '_day_' . date('Ymd');
+            $dayCount = (int)Redis::get($dayKey);
+            if ($dayCount >= self::ONE_DAY_MAX_NUM) {
+                throw new CommonException('今日验证码发送次数已达上限，请明天再试');
+            }
+
+            # 发送邮件
             Mail::raw("您的验证码是：{$code}，有效期15分钟", function ($message) use ($email) {
                 $message->to($email)->subject('验证码');
             });
 
-            # 发送成功，进行缓存
+            # 发送成功，缓存验证码、每分钟标识、每日计数
             Redis::setex($key, self::CACHE_OUT_TIME, $code);
-            Redis::setex($flag, 60, 1); # 每分钟获取一次标识
+            Redis::setex($flagMin, 60, 1);
+            Redis::incr($dayKey);
+            Redis::expire($dayKey, 86400); # 24小时后自动清除
+
             return true;
 
         } catch (Exception $e) {
