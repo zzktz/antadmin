@@ -34,27 +34,23 @@ class AccountController extends BaseController
     public function login(Request $request)
     {
         try {
-            if ($request->has('username')) {
-                # 用户名密码登录
-                $request->validate([
-                    'username' => 'required|max:50',
-                    'password' => 'required|max:50'
-                ]);
+            $usename = $request->input('username');
 
-                $name     = $request->input('username');
-                $password = $request->input('password');
-                $token    = $this->loginService->accountLogin($name, $password);
-            } else {
+            if (empty($usename)) {
+                throw new CommonException('登录账号/手机号/邮件地址不能空');
+            }
+
+            if (Base::isMobile($usename)) {
                 # 手机验证码登录
                 $request->validate([
-                    'mobile'  => 'required|mobile',
                     'captcha' => 'required|max:6'
                 ]);
-
-                $mobile  = $request->input('mobile');
                 $smscode = $request->input('captcha');
-
-                $token = $this->loginService->mobileLogin($mobile, $smscode);
+                $token   = $this->loginService->mobileLogin($usename, $smscode);
+            } else {
+                # 用户名密码登录
+                $password = $request->input('password');
+                $token    = $this->loginService->accountLogin($usename, $password);
             }
 
             return Base::sucJson('成功', ['token' => $token]);

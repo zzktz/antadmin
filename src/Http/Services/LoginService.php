@@ -41,25 +41,21 @@ class LoginService
         # 安全检查
         SafeService::checking();
         try {
-
-            if (Base::isMobile($name)) {
-                $info = $this->accountRepo->getInfoByMobile($name);
-            } elseif (Base::isEmail($name)) {
+            if (Base::isEmail($name)) {
                 $info = $this->accountRepo->getInfoByEmail($name);
             } else {
                 $info = $this->accountRepo->getInfoByName($name);
             }
-
             if (empty($info)) {
                 throw new CommonException('账户或密码错误');
             }
-            $accountId = $info['id'];
             $_password = $info['password'];
-
             if (!Hash::check($password, $_password)) {
                 throw new CommonException('账户或密码错误');
             }
-            $token = $this->tokenRepo->getTokenById($accountId);
+
+            $accountId = $info['id'];
+            $token     = $this->tokenRepo->getTokenById($accountId);
             # 成功
             SafeService::flagSuccess();
             return $token;
