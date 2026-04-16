@@ -120,7 +120,7 @@ class PermissionRepository
         if (in_array($supperRoleId, $roleIds)) {
             $parentPermissionIds = $this->getParentPermissionsIds();
         } else {
-            $parentPermissionIds = $this->permissionModel->whereIn('role_id', $roleIds)
+            $parentPermissionIds = $this->rolePermissionModel->whereIn('role_id', $roleIds)
                 ->pluck('permission_id')
                 ->toArray();
         }
