@@ -56,6 +56,9 @@ class PermissionRepository
     public function getParentPermissionsByAccountId(int $accountId): array
     {
         $permissionIds     = $this->getParentPermissionsIdsByAccountId($accountId);
+
+        info($permissionIds);
+
         $parentPermissions = $this->permissionModel->whereIn('id', $permissionIds)->get()->toArray();
         return $parentPermissions ?? [];
     }
@@ -71,7 +74,7 @@ class PermissionRepository
             $parentPermissionsIds = $this->getParentPermissionsIds();
         } else {
             $roleIds              = $this->roleModel->getRolesIdsByAccountId($accountId);
-            $parentPermissionsIds = $this->getParentPermissionsByRoleIds($roleIds);
+            $parentPermissionsIds = $this->getParentPermissionsIdsByRoleIds($roleIds);
         }
         return $parentPermissionsIds;
     }
@@ -94,20 +97,7 @@ class PermissionRepository
         return $allPermission_ids;
     }
 
-    /**
-     * 根据角色 获取【父级权限】
-     * @param array $roleIds
-     * @return array
-     */
-    public function getParentPermissionsByRoleIds(array $roleIds): array
-    {
-        $parentPermissionIds = $this->getParentPermissionsIdsByRoleIds($roleIds);
 
-        $data = $this->permissionModel->whereIn('id', $parentPermissionIds)
-            ->get()
-            ->toArray();
-        return $data ?? [];
-    }
 
     /**
      * 根据角色 获取【父级权限IDS】
