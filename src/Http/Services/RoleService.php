@@ -88,6 +88,21 @@ class RoleService
         return true;
     }
 
+    public function roleRuleEdit(array $rules, int $id, int $accountId): bool
+    {
+        $this->checkPermissions($accountId);
+        $this->checkSupperRoleId($id);
+        # 删除角色下的权限
+        $this->rolePermissionsRepo->deleteByRoleId($id);
+        if (!empty($rules)) {
+            foreach ($rules as $permissionId) {
+                $this->rolePermissionsRepo->add($id, $permissionId);
+            }
+        }
+        return true;
+    }
+
+
     public function del(int $id, int $accountId): bool
     {
         # 权限验证

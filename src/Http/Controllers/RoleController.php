@@ -59,6 +59,16 @@ class RoleController extends BaseController
         return Base::sucJson('编辑成功');
     }
 
+
+    public function roleRuleEdit($request)
+    {
+        $opId  = $request['accountId'];
+        $id    = Base::getValue($request, 'id', '', 'required|integer');
+        $rules = Base::getValue($request, 'rules', '', 'array');
+        $this->roleService->roleRuleEdit($rules, $id, $opId);
+        return Base::sucJson('编辑成功');
+    }
+
     /**
      * 【角色管理】更改状态
      */
