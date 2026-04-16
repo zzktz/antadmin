@@ -31,7 +31,7 @@ class AccountRepository
     {
         # 依赖已通过容器自动注入
     }
-    
+
 
     public function getFormatList(int $limit): array
     {
@@ -174,6 +174,12 @@ class AccountRepository
     public function getInfo(int $accountId): array
     {
         $account = $this->accountModel->where('id', $accountId)->first();
+        return $account ? $account->toArray() : [];
+    }
+
+    public function findByField(string $field, string $value)
+    {
+        $account = $this->accountModel->where($field, $value)->first();
         return $account ? $account->toArray() : [];
     }
 
