@@ -104,7 +104,6 @@ class AccountService
         # 密码强度验证
         PasswordService::checkPasswordStrength($password);
 
-
         # 参数验证
         if (empty($roles)) {
             throw new CommonException('角色值不存在');
@@ -177,6 +176,8 @@ class AccountService
      */
     public function personalEdit(string $field, string $value, int $accountId): bool
     {
+        throw new CommonException('不可更换');
+
         if (empty($field) || empty($value)) {
             throw new CommonException('字段和值不能为空');
         }
