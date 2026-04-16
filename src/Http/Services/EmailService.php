@@ -26,7 +26,11 @@ class EmailService
     {
         try {
             $key  = md5($email);
+            $flag = $key . '_flag';
             $code = Base::random(6);
+            if (Redis::get($flag)) {
+                throw new CommonException('请求太频繁，最大允许每分钟请求一次');
+            }
             # 开始发送邮件
 
             Mail::raw("您的验证码是：{$code}，有效期15分钟", function ($message) use ($email) {
@@ -35,6 +39,7 @@ class EmailService
 
             # 发送成功，进行缓存
             Redis::setex($key, self::CACHE_OUT_TIME, $code);
+            Redis::setex($flag, 60, 1);
             return true;
 
         } catch (Exception $e) {
