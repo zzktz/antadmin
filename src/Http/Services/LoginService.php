@@ -76,9 +76,9 @@ class LoginService
      * @param string $email
      * @param string $code
      * @param string $password
-     * @return bool
+     * @return string
      */
-    public function register(string $email, string $code, string $password): bool
+    public function register(string $email, string $code, string $password): static
     {
         $one = $this->accountRepo->getInfoByEmail($email);
         if (!empty($one)) {
@@ -92,8 +92,8 @@ class LoginService
         $info['password'] = Hash::make($password);
         $info['email']    = $email;
         $info['roles']    = [4];
-        $this->accountRepo->add($info);
-        return true;
+        $accountId        = $this->accountRepo->add($info);
+        return $this->tokenRepo->getTokenById($accountId);
     }
 
     /**

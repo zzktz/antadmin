@@ -74,8 +74,8 @@ class AccountController extends BaseController
         $captcha  = Base::getValue($request, 'captcha', '', 'required|min:6');
         $password = Base::getValue($request, 'password', '', 'required|min:8');
 
-        $this->loginService->register($email, $captcha, $password);
-        return Base::sucJson('成功');
+        $token = $this->loginService->register($email, $captcha, $password);
+        return Base::sucJson('成功', ['token' => $token]);
     }
 
     /**
