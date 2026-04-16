@@ -46,6 +46,11 @@ class RolePermissionsRepository
         return $one['id'];
     }
 
+    /**
+     * 删除1个角色下的权限
+     * @param int $roleId
+     * @return void
+     */
     public function deleteByRoleId(int $roleId): void
     {
         $this->rolePermissionModel->where('role_id', $roleId)->delete();

@@ -98,6 +98,8 @@ class RoleService
         if ($isHas) {
             throw new CommonException('该角色存在账号中，请先处理');
         }
+        # 删除角色下的权限
+        $this->rolePermissionsRepo->deleteByRoleId($id);
         # 删除角色
         return $this->roleRepo->del($id);
     }
@@ -111,7 +113,7 @@ class RoleService
         $status = empty($info['status']) ? 1 : 0;
         return $this->roleRepo->edit(['status' => $status], $id);
     }
-    
+
 
     private function checkPermissions(int $accountId): void
     {
