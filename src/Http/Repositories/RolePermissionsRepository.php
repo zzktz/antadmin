@@ -5,8 +5,9 @@
 
 namespace Antmin\Http\Repositories;
 
-
+use Antmin\Exceptions\CommonException;
 use Antmin\Models\RolePermission;
+use Illuminate\Support\Facades\DB;
 
 class RolePermissionsRepository
 {
