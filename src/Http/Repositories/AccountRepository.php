@@ -84,7 +84,7 @@ class AccountRepository
 
                 # 准备用户数据
                 $userData = [
-                    'name'     => $info['name'],
+                    'name'     => $info['name'] ?? random(8, 'abcdefghijklmnopqrstuvwyz'),
                     'nickname' => $info['nickname'],
                     'mobile'   => $info['mobile'],
                     'email'    => $info['email'],
