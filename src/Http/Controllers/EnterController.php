@@ -26,7 +26,7 @@ class EnterController extends BaseController
         protected AccountService        $accountService,
         protected LoginService          $loginService,
         protected SmsService            $smsService,
-        protected PermissionsService $permissionsService,
+        protected PermissionsService    $permissionsService,
 
         protected MenuController        $menuController,
         protected AccountController     $accountController,
@@ -192,6 +192,10 @@ class EnterController extends BaseController
         return $this->roleController->roleEdit($request);
     }
 
+    protected function roleRuleEdit($request)
+    {
+        return $this->roleController->roleRuleEdit($request);
+    }
 
     protected function roleEditStatus($request)
     {
