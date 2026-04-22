@@ -88,13 +88,13 @@ class AccountController extends BaseController
     /**
      * 【个人信息】编辑
      */
-    public function personalInfoEdit($request)
+    public function personalInfoEdit(Request $request)
     {
         $accountId = $request['accountId'];
         $email     = Base::getValue($request, 'email', '', 'email');
         $mobile    = Base::getValue($request, 'mobile', '', 'mobile');
         $nickname  = Base::getValue($request, 'nickname', '', 'alpha_dash|max:50');
-        $birthday  = Base::getValue($request, 'birthday', '', 'date_format:Y-m-d');
+
         if (!empty($mobile)) {
             $filed = 'mobile';
             $value = $mobile;
@@ -104,9 +104,6 @@ class AccountController extends BaseController
         } elseif (!empty($email)) {
             $filed = 'email';
             $value = $email;
-        } elseif (!empty($birthday)) {
-            $filed = 'birthday';
-            $value = $birthday;
         } else {
             $filed = '';
             $value = '';
@@ -119,7 +116,7 @@ class AccountController extends BaseController
     /**
      * 【账号管理】列表
      */
-    public function accountList($request)
+    public function accountList(Request $request)
     {
         $opId  = $request['accountId'];
         $limit = Base::getValue($request, 'pageSize', '', 'integer');
@@ -131,7 +128,7 @@ class AccountController extends BaseController
     /**
      *【账号管理】添加
      */
-    public function accountAdd($request)
+    public function accountAdd(Request $request)
     {
         $opId = $request['accountId'];
 
@@ -157,7 +154,7 @@ class AccountController extends BaseController
     /**
      *【账号管理】编辑
      */
-    public function accountEdit($request)
+    public function accountEdit(Request $request)
     {
         $opId = $request['accountId'];
         $request->validate([
@@ -181,7 +178,7 @@ class AccountController extends BaseController
     /**
      *【账号管理】状态开关
      */
-    public function accountEditStatus($request)
+    public function accountEditStatus(Request $request)
     {
         $opId = $request['accountId'];
         $id   = Base::getValue($request, 'id', '', 'required|integer');
@@ -192,7 +189,7 @@ class AccountController extends BaseController
     /**
      * 【账号管理】删除
      */
-    public function accountDel($request)
+    public function accountDel(Request $request)
     {
         $opId = $request['accountId'];
         $id   = Base::getValue($request, 'id', '', 'required|integer');
@@ -203,7 +200,7 @@ class AccountController extends BaseController
     /**
      * 【账号管理】重置密码
      */
-    public function reInitPassword($request)
+    public function reInitPassword(Request $request)
     {
         $id = Base::getValue($request, 'id', '', 'required|integer');
         $this->accountService->reInitPassword($id);
