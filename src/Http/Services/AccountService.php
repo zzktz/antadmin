@@ -176,32 +176,44 @@ class AccountService
      */
     public function personalEdit(string $field, string $value, int $accountId): bool
     {
-        if (empty($field) || empty($value)) {
-            throw new CommonException('字段和值不能为空');
+        # 1. 字段白名单（根据业务需要，只允许更新哪些字段）
+        $allowedFields = ['mobile', 'email', 'nickname'];
+        if (!in_array($field, $allowedFields, true)) {
+            throw new CommonException('不允许修改该字段');
         }
 
-        try {
-            # 唯一性检查
+        # 2. 值不能为空（字符串长度为0，注意 '0' 是合法的）
+        if ($value === '') {
+            throw new CommonException('字段值不能为空');
+        }
+
+        # 3. 敏感词检查（昵称专用，其他字段不检查）
+        if ($field === 'nickname') {
+            $forbiddenWords = ['管理', 'admin', '官方', 'token', 'Token'];
+            foreach ($forbiddenWords as $word) {
+                if (str_contains($value, $word)) {
+                    throw new CommonException('昵称不合法');
+                }
+            }
+        }
+
+        # 4. 唯一性检查（仅对需要唯一的字段）
+        $uniqueFields = ['mobile', 'email', 'nickname'];
+        if (in_array($field, $uniqueFields, true)) {
             $existing = $this->accountRepo->findByField($field, $value);
-            if (!empty($existing) && $accountId != $existing['id']) {
+            if ($existing && ($existing['id'] ?? 0) !== $accountId) {
                 $messages = [
                     'mobile'   => '手机号已存在',
                     'email'    => '邮箱已存在',
                     'nickname' => '昵称已存在'
                 ];
-
-                if (isset($messages[$field])) {
-                    throw new CommonException($messages[$field]);
-                }
+                throw new CommonException($messages[$field]);
             }
-
-            # 执行更新
-            return $this->accountRepo->edit([$field => $value], $accountId);
-        } catch (Exception $e) {
-            throw new CommonException($e->getMessage());
         }
-    }
 
+        # 5. 执行更新
+        return $this->accountRepo->edit([$field => $value], $accountId);
+    }
 
     /**
      * 更新状态
