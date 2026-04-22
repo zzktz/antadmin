@@ -176,8 +176,6 @@ class AccountService
      */
     public function personalEdit(string $field, string $value, int $accountId): bool
     {
-        throw new CommonException('不可更换');
-
         if (empty($field) || empty($value)) {
             throw new CommonException('字段和值不能为空');
         }
@@ -187,9 +185,9 @@ class AccountService
             $existing = $this->accountRepo->findByField($field, $value);
             if (!empty($existing) && $accountId != $existing['id']) {
                 $messages = [
-                    'mobile' => '手机号已存在',
-                    'email'  => '邮箱已存在',
-                    'name'   => '账号名称已存在'
+                    'mobile'   => '手机号已存在',
+                    'email'    => '邮箱已存在',
+                    'nickname' => '昵称已存在'
                 ];
 
                 if (isset($messages[$field])) {

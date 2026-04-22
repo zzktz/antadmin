@@ -93,7 +93,7 @@ class AccountController extends BaseController
         $accountId = $request['accountId'];
         $email     = Base::getValue($request, 'email', '', 'email');
         $mobile    = Base::getValue($request, 'mobile', '', 'mobile');
-        $nickname  = Base::getValue($request, 'nickname', '', 'alpha_dash|max:50');
+        $nickname  = Base::getValue($request, 'nickname', '', 'max:20');
 
         if (!empty($mobile)) {
             $filed = 'mobile';
