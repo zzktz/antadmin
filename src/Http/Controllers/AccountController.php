@@ -168,10 +168,8 @@ class AccountController extends BaseController
         $info['nickname'] = $request->input('username');
         $info['email']    = $request->input('email');
         $info['mobile']   = $request->input('mobile');
-        $info['roles']    = $request->input('roles');
 
         $this->accountService->accountEdit($info, $id, $opId);
-
         return Base::sucJson('账号编辑成功');
     }
 
