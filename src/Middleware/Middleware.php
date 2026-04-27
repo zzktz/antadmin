@@ -10,7 +10,7 @@ use Antmin\Http\Services\AccountService;
 
 class Middleware
 {
-    private const IP_REQUEST_LIMIT = 100;
+    private const IP_REQUEST_LIMIT  = 200;
     private const IP_REQUEST_WINDOW = 60;
 
     /**
@@ -37,7 +37,7 @@ class Middleware
         $token           = $request->header('Access-Token');
         $request['page'] = $request['pageNo'] ?? 1;
 
-        $ip = $request->ip() ?: 'unknown';
+        $ip       = $request->ip() ?: 'unknown';
         $limitKey = 'middleware_ip_' . md5($ip);
         if (!Limit::handle($limitKey, self::IP_REQUEST_LIMIT, self::IP_REQUEST_WINDOW)) {
             throw new CommonException('您的请求太快了，超过了最大允许量！');
@@ -49,7 +49,7 @@ class Middleware
         }
 
         if (empty($token)) {
-            throw new CommonException('Access-Token 不存在');
+            throw new CommonException('Access-Token 不存在', [], -1, 401);
         }
         $accountId            = $this->accountService->getAccountIdByToken($token);
         $request['accountId'] = $accountId;
