@@ -80,8 +80,21 @@ class AccountController extends BaseController
     public function sendCodeByEmail(Request $request)
     {
         $email = Base::getValue($request, 'email', '', 'email');
-        $this->loginService->sendCodeByEmail($email);
+        $type  = Base::getValue($request, 'type', '', 'max:20');
+        $this->loginService->sendCodeByEmail($email, $type);
         return Base::sucJson('邮件验证码已发送');
+    }
+
+    /**
+     * 密码修改
+     */
+    public function systemResetPassword(Request $request)
+    {
+        $email    = Base::getValue($request, 'email', '', 'email');
+        $password = Base::getValue($request, 'password', '', 'required');
+        $captcha  = Base::getValue($request, 'captcha', '', 'required|min:6');
+        $this->loginService->systemResetPassword($email, $password, $captcha);
+        return Base::sucJson('密码修改成功！');
     }
 
 

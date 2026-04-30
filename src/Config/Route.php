@@ -21,6 +21,8 @@ Route::group([
     Route::any('systemLogin', [AccountController::class, 'login']);
     Route::any('systemRegister', [AccountController::class, 'register']);
     Route::any('sendCodeByEmail', [AccountController::class, 'sendCodeByEmail']);
+    Route::any('systemResetPassword', [AccountController::class, 'systemResetPassword']);
+
 
     Route::any('systemUploadEditor', [UploadController::class, 'editorUpload']);
     Route::any('systemIndexOperate', [EnterController::class, 'operate']);

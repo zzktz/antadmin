@@ -97,11 +97,17 @@ class LoginService
      * @param string $email
      * @return bool
      */
-    public function sendCodeByEmail(string $email): bool
+    public function sendCodeByEmail(string $email, string $type): bool
     {
         $info = $this->accountRepo->getInfoByEmail($email);
-        if (!empty($info)) {
-            throw new CommonException('邮箱已注册');
+        if ($type == 'forgot') {
+            if (empty($info)) {
+                throw new CommonException('邮箱未注册');
+            }
+        } else {
+            if (!empty($info)) {
+                throw new CommonException('邮箱已注册');
+            }
         }
         EmailService::sendCode($email);
         return true;
@@ -131,5 +137,27 @@ class LoginService
         return $this->tokenRepo->getTokenById($info['id']);
     }
 
+    /**
+     * 修改密码
+     * @param string $email
+     * @param string $password
+     * @param string $code
+     * @return bool
+     */
+    public function systemResetPassword(string $email, string $password, string $code): bool
+    {
+        $info = $this->accountRepo->getInfoByEmail($email);
+        if (empty($info)) {
+            throw new CommonException('邮箱未注册');
+        }
+        $verify = EmailService::verifyCode($email, $code);
+        if (empty($verify)) {
+            throw new CommonException('邮箱验证码不正确');
+        }
+
+        $up['password'] = Hash::make($password);
+        $this->accountRepo->edit($up, $info['id']);
+        return true;
+    }
 
 }
