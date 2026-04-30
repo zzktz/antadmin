@@ -100,7 +100,7 @@ class LoginService
     public function sendCodeByEmail(string $email, string $type): bool
     {
         $info = $this->accountRepo->getInfoByEmail($email);
-        if ($type == 'forgot') {
+        if ($type == 'forget') {
             if (empty($info)) {
                 throw new CommonException('邮箱未注册');
             }
