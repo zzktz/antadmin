@@ -57,6 +57,10 @@ class VersionService
     {
 
         try {
+            $accountId = request()['accountId'];
+            if ($accountId != 1) {
+                throw new CommonException('无需主动升级，重载浏览器即可升级。');
+            }
             $projectId  = self::getProjectId();
             $basePath   = base_path();
             $publicPath = public_path();

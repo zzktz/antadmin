@@ -122,7 +122,17 @@ class AccountRepository
     {
         $one = $this->accountModel->find($id);
         $one->update($info);
+        return true;
+    }
 
+    /**
+     * 编辑角色
+     * @param array $info
+     * @param int $id
+     * @return bool
+     */
+    public function editRole(array $info, int $id): bool
+    {
         # 删除所有
         $this->accountRoleModel->where('account_id', $id)->delete();
         $roles = $info['roles'] ?? [];

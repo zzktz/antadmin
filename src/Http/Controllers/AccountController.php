@@ -79,22 +79,36 @@ class AccountController extends BaseController
      */
     public function sendCodeByEmail(Request $request)
     {
-        $email = Base::getValue($request, 'email', '', 'email');
-        $this->loginService->sendCodeByEmail($email);
+        $email = Base::getValue($request, 'email', '', 'required|email');
+        $type  = Base::getValue($request, 'type', '', 'max:20');
+        $type  = $type ?? '';
+        $this->loginService->sendCodeByEmail($email, $type);
         return Base::sucJson('邮件验证码已发送');
+    }
+
+    /**
+     * 密码修改
+     */
+    public function systemResetPassword(Request $request)
+    {
+        $email    = Base::getValue($request, 'email', '', 'email');
+        $password = Base::getValue($request, 'password', '', 'required');
+        $captcha  = Base::getValue($request, 'captcha', '', 'required|min:6');
+        $this->loginService->systemResetPassword($email, $password, $captcha);
+        return Base::sucJson('密码修改成功！');
     }
 
 
     /**
      * 【个人信息】编辑
      */
-    public function personalInfoEdit($request)
+    public function personalInfoEdit(Request $request)
     {
         $accountId = $request['accountId'];
         $email     = Base::getValue($request, 'email', '', 'email');
         $mobile    = Base::getValue($request, 'mobile', '', 'mobile');
-        $nickname  = Base::getValue($request, 'nickname', '', 'alpha_dash|max:50');
-        $birthday  = Base::getValue($request, 'birthday', '', 'date_format:Y-m-d');
+        $nickname  = Base::getValue($request, 'nickname', '', 'max:20');
+
         if (!empty($mobile)) {
             $filed = 'mobile';
             $value = $mobile;
@@ -104,9 +118,6 @@ class AccountController extends BaseController
         } elseif (!empty($email)) {
             $filed = 'email';
             $value = $email;
-        } elseif (!empty($birthday)) {
-            $filed = 'birthday';
-            $value = $birthday;
         } else {
             $filed = '';
             $value = '';
@@ -119,7 +130,7 @@ class AccountController extends BaseController
     /**
      * 【账号管理】列表
      */
-    public function accountList($request)
+    public function accountList(Request $request)
     {
         $opId  = $request['accountId'];
         $limit = Base::getValue($request, 'pageSize', '', 'integer');
@@ -131,7 +142,7 @@ class AccountController extends BaseController
     /**
      *【账号管理】添加
      */
-    public function accountAdd($request)
+    public function accountAdd(Request $request)
     {
         $opId = $request['accountId'];
 
@@ -157,7 +168,7 @@ class AccountController extends BaseController
     /**
      *【账号管理】编辑
      */
-    public function accountEdit($request)
+    public function accountEdit(Request $request)
     {
         $opId = $request['accountId'];
         $request->validate([
@@ -171,17 +182,15 @@ class AccountController extends BaseController
         $info['nickname'] = $request->input('username');
         $info['email']    = $request->input('email');
         $info['mobile']   = $request->input('mobile');
-        $info['roles']    = $request->input('roles');
 
         $this->accountService->accountEdit($info, $id, $opId);
-
         return Base::sucJson('账号编辑成功');
     }
 
     /**
      *【账号管理】状态开关
      */
-    public function accountEditStatus($request)
+    public function accountEditStatus(Request $request)
     {
         $opId = $request['accountId'];
         $id   = Base::getValue($request, 'id', '', 'required|integer');
@@ -192,7 +201,7 @@ class AccountController extends BaseController
     /**
      * 【账号管理】删除
      */
-    public function accountDel($request)
+    public function accountDel(Request $request)
     {
         $opId = $request['accountId'];
         $id   = Base::getValue($request, 'id', '', 'required|integer');
@@ -203,7 +212,7 @@ class AccountController extends BaseController
     /**
      * 【账号管理】重置密码
      */
-    public function reInitPassword($request)
+    public function reInitPassword(Request $request)
     {
         $id = Base::getValue($request, 'id', '', 'required|integer');
         $this->accountService->reInitPassword($id);

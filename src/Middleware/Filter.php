@@ -13,6 +13,7 @@ class Filter
         return [
             'systemRegister',
             'systemLogin',
+            'systemResetPassword',
             'sendCodeByEmail',
             'systemUploadEditor',
         ];
