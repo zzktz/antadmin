@@ -79,8 +79,9 @@ class AccountController extends BaseController
      */
     public function sendCodeByEmail(Request $request)
     {
-        $email = Base::getValue($request, 'email', '', 'email');
+        $email = Base::getValue($request, 'email', '', 'required|email');
         $type  = Base::getValue($request, 'type', '', 'max:20');
+        $type  = $type ?? '';
         $this->loginService->sendCodeByEmail($email, $type);
         return Base::sucJson('邮件验证码已发送');
     }
