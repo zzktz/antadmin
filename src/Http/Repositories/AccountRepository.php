@@ -54,7 +54,7 @@ class AccountRepository
             $rest[$k]['roles']        = $this->roleRepository->getRolesIdsByAccountId($v['id']);
             $rest[$k]['rules']        = $this->permissionRepository->getAllPermissionsIdsByAccountId($v['id']);
             $rest[$k]['isShowDelete'] = $this->isSuperAdmin($v['id']) ? 0 : 1;
-            $rest[$k]['created_at']   = $v['created_at'];;
+            $rest[$k]['created_at']   = $v['created_at'];
         }
 
         $temp['current']   = $datas['pageNo'];
