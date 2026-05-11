@@ -11,6 +11,7 @@ use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
 use Antmin\Models\Account as AccountModel;
 use Antmin\Models\AccountRole as AccountRoleModel;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
@@ -102,6 +103,20 @@ class AccountRepository
                 }
                 return $account->id;
             });
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? 0) === 1062) {
+                $message = $e->getMessage();
+                if (str_contains($message, 'email')) {
+                    throw new CommonException('邮箱已注册');
+                }
+                if (str_contains($message, 'mobile')) {
+                    throw new CommonException('手机号已存在');
+                }
+                if (str_contains($message, 'name')) {
+                    throw new CommonException('账号名已存在');
+                }
+            }
+            throw new CommonException('添加用户失败: ' . $e->getMessage());
         } catch (Exception $e) {
             throw new CommonException('添加用户失败: ' . $e->getMessage());
         }
