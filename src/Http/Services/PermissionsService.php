@@ -35,6 +35,9 @@ class PermissionsService
     public function ruleAdd(array $info, int $opId): int
     {
         $this->checkPermissions($opId);
+        $pid = (int) ($info['pid'] ?? 0);
+        $this->validateParentId($pid);
+        $info['pid'] = $pid;
         $one = $this->permissionRepo->getInfoByVidAndPid($info['vid'], $info['pid']);
         if ($one) {
             throw new CommonException('同级别的识别码不可相同');
@@ -48,6 +51,9 @@ class PermissionsService
         if (empty($this->permissionRepo->getInfo($id))) {
             throw new CommonException('信息不存在');
         }
+        $pid = (int) ($info['pid'] ?? 0);
+        $this->validateParentId($pid, $id);
+        $info['pid'] = $pid;
         $one = $this->permissionRepo->getInfoByVidAndPid($info['vid'], $info['pid']);
         if (!empty($one) && $one['id'] != $id) {
             throw new CommonException('同级别的识别码不可相同');
@@ -72,6 +78,9 @@ class PermissionsService
     public function ruleDel(int $id, int $opId): bool
     {
         $this->checkPermissions($opId);
+        if (empty($this->permissionRepo->getInfo($id))) {
+            throw new CommonException('信息不存在');
+        }
         return $this->permissionRepo->del($id);
     }
 
@@ -111,6 +120,40 @@ class PermissionsService
         if (!$this->accountRepo->isSuperAdmin($accountId)) {
             throw new CommonException('非超级管理员无权操作');
         }
+    }
+
+    /**
+     * 校验权限父级，防止不存在的父级和循环层级。
+     */
+    private function validateParentId(int $parentId, int $permissionId = 0): void
+    {
+        if ($parentId <= 0) {
+            return;
+        }
+        if (empty($this->permissionRepo->getInfo($parentId))) {
+            throw new CommonException('父级权限不存在');
+        }
+        if ($permissionId > 0 && ($parentId === $permissionId || $this->isDescendant($parentId, $permissionId))) {
+            throw new CommonException('父级权限不能设置为当前权限或其子权限');
+        }
+    }
+
+    /**
+     * 检查待设置的父级权限是否位于当前权限的子树中。
+     */
+    private function isDescendant(int $parentId, int $permissionId): bool
+    {
+        $visited = [];
+        $current = $parentId;
+        while ($current > 0 && !in_array($current, $visited, true)) {
+            if ($current === $permissionId) {
+                return true;
+            }
+            $visited[] = $current;
+            $parent = $this->permissionRepo->getInfo($current);
+            $current = (int) ($parent['pid'] ?? 0);
+        }
+        return false;
     }
 
 

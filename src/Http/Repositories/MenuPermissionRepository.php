@@ -33,4 +33,9 @@ class MenuPermissionRepository
         return array_merge($res, $defIds);
     }
 
+    public function deleteByMenuId(int $menuId): void
+    {
+        $this->menuPermissionModel->where('menu_id', $menuId)->delete();
+    }
+
 }

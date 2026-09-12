@@ -18,9 +18,8 @@ trait CacheTraits
     public static function cacheTraitsGet(string $cacheKey, callable $callback, int $outtime = 0): array
     {
         $key = CacheTool::getPrefix($cacheKey, self::class);
-        $res = CacheTool::getArrCache($key);
-        if ($res) {
-            return $res;
+        if (CacheTool::isKeyExists($key)) {
+            return CacheTool::getArrCache($key);
         }
         $data = $callback(); # 调用传入的闭包
         CacheTool::setArrCache($key, $data, $outtime);

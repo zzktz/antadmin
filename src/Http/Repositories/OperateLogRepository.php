@@ -5,7 +5,7 @@
 
 namespace Antmin\Http\Repositories;
 
-use App\Common\Base;
+use Antmin\Common\Base;
 use Antmin\Models\OperateLog;
 
 
@@ -46,7 +46,7 @@ class OperateLogRepository
 
     public function add(array $info): int
     {
-        return $this->operateLog->operateLogcreate($info)->id;
+        return $this->operateLog->create($info)->id;
     }
 
     public function getInfo(int $id): array

@@ -2,8 +2,11 @@
 
 namespace Antmin\Http\Repositories;
 
-
+use Antmin\Exceptions\CommonException;
+use Exception;
 use Illuminate\Support\Facades\Redis;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Exception\AMQPConnectionClosedException;
 
 class RequestLogRabbit
 {
@@ -38,7 +41,7 @@ class RequestLogRabbit
      * @return mixed
      * @throws CommonException
      */
-    public static function getRabbitMQQueueCount($queueName)
+    public static function getRabbitMQQueueCount(string $queueName): int
     {
         # RabbitMQ 的连接配置
         $host     = config('queue.connections.rabbitmq.host');

@@ -96,7 +96,8 @@ class Menu extends Model
         } catch (Throwable $e) {
             # 记录日志，降级直接查询数据库
             Log::error('菜单缓存获取失败', ['error' => $e->getMessage()]);
-            return self::select(['id', 'title', /* 必要字段 */])->get()->toArray() ?: [];
+            # 降级查询必须保留菜单树所需的完整字段，避免缓存异常时返回不完整菜单。
+            return self::query()->get()->toArray() ?: [];
         } finally {
             # 确保只有成功获取锁后才释放
             if ($lock && $lock->owned()) {

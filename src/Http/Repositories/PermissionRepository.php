@@ -6,7 +6,9 @@ use Antmin\Common\Base;
 use Antmin\Models\Permission;
 use Antmin\Models\Role;
 use Antmin\Models\RolePermission;
+use Antmin\Models\MenuPermission;
 use Antmin\Http\Resources\PermissionResource;
+use Illuminate\Support\Facades\DB;
 
 class PermissionRepository
 {
@@ -15,6 +17,7 @@ class PermissionRepository
         protected Permission     $permissionModel,
         protected RolePermission $rolePermissionModel,
         protected Role           $roleModel,
+        protected MenuPermission $menuPermissionModel,
     )
     {
 
@@ -208,9 +211,33 @@ class PermissionRepository
 
     public function del(int $id): bool
     {
-        $this->permissionModel->where('id', $id)->delete();
-        $this->permissionModel->where('pid', $id)->delete();
-        return true;
+        if (!$this->permissionModel->whereKey($id)->exists()) {
+            return true;
+        }
+        $ids = [];
+        $pending = [$id];
+        while (!empty($pending)) {
+            $children = $this->permissionModel
+                ->whereIn('pid', $pending)
+                ->pluck('id')
+                ->map(static fn ($value): int => (int) $value)
+                ->all();
+            $newIds = array_values(array_diff($children, $ids));
+            $ids = array_values(array_unique(array_merge($ids, $pending, $newIds)));
+            $pending = $newIds;
+        }
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        return DB::transaction(function () use ($ids) {
+            if (empty($ids)) {
+                return true;
+            }
+            # 删除权限前先清理角色、菜单关联，避免留下无效授权记录。
+            $this->rolePermissionModel->whereIn('permission_id', $ids)->delete();
+            $this->menuPermissionModel->whereIn('permission_id', $ids)->delete();
+            $this->permissionModel->whereIn('id', $ids)->delete();
+            return true;
+        });
     }
 
     public function getInfo(int $id): array

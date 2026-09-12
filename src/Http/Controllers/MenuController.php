@@ -57,7 +57,7 @@ class MenuController extends BaseController
         $info['routePath']     = Base::getValue($request, 'routePath', '', 'required|max:100');
         $info['component']     = Base::getValue($request, 'component', '', 'required|max:100');
         $info['redirect']      = Base::getValue($request, 'redirect', '', 'max:200');
-        $info['permissionIds'] = Base::getValue($request, 'roles', '', 'array');
+        $info['permissionIds'] = Base::getValue($request, 'roles', '', 'array') ?? [];
         $this->menuService->menuAdd($info, $opId);
         return Base::sucJson('成功');
     }
@@ -76,7 +76,7 @@ class MenuController extends BaseController
         $info['routePath']     = Base::getValue($request, 'routePath', '', 'required|max:100');
         $info['component']     = Base::getValue($request, 'component', '', 'required|max:100');
         $info['redirect']      = Base::getValue($request, 'redirect', '', 'max:200');
-        $info['permissionIds'] = Base::getValue($request, 'roles', '', 'array');
+        $info['permissionIds'] = Base::getValue($request, 'roles', '', 'array') ?? [];
         $this->menuService->menuEdit($info, $id, $opId);
         return Base::sucJson('成功');
     }

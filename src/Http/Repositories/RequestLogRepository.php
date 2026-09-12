@@ -27,8 +27,8 @@ class RequestLogRepository
                 $query->where('client', $search['client']);
             }
             if (!empty($search['start_at'])) {
-                $query->where('created_at', '>=', $search['start_at']);
-                $query->where('created_at', '<=', $search['end_at']);
+                $query->where('request_at', '>=', $search['start_at']);
+                $query->where('request_at', '<=', $search['end_at']);
             }
             if (!empty($search['response_status'])) {
                 $query->where('response_status', $search['response_status']);
@@ -44,6 +44,22 @@ class RequestLogRepository
         $arrData           = self::getLogData($limit);
         $arrData['memory'] = self::getUsageSize();
         return $arrData;
+    }
+
+    /**
+     * 清空当前应用的数据库请求日志。
+     */
+    public static function clearData(): void
+    {
+        Model::query()->where('app_name', config('app.name'))->delete();
+    }
+
+    /**
+     * 直接写入数据库请求日志。
+     */
+    public static function addStorage(array $data): void
+    {
+        Model::query()->create($data);
     }
 
     /**
@@ -88,7 +104,7 @@ class RequestLogRepository
     /**
      * 【日志内存储存】清空
      */
-    public static function clearData(string $month = ''): void
+    public static function clearRedisData(string $month = ''): void
     {
         $month = !empty($month) ? $month : date('m');
         $key   = self::getStatKey() . '_store_' . $month;

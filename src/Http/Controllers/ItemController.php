@@ -6,6 +6,7 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\ItemService;
 use Illuminate\Http\Request;
 
@@ -20,10 +21,16 @@ class ItemController extends BaseController
      */
     public function operate(Request $request)
     {
-        $action = $request['action'];
+        if ((int) ($request['accountId'] ?? 0) !== 1) {
+            throw new CommonException('无权操作');
+        }
+        $action = (string) $request->input('action', '');
         unset($request['action']);
-        if (method_exists(self::class, $action)) return self::$action($request);
-        return Base::errJson('No find action');
+        $allowedActions = ['index', 'add', 'dels', 'editTitle', 'detailList', 'detailAdd', 'detailEditValue', 'detailEditListorder', 'detailEditStatus', 'detailDel'];
+        if (in_array($action, $allowedActions, true) && is_callable([self::class, $action])) {
+            return self::{$action}($request);
+        }
+        return Base::errJson('操作不存在');
     }
 
     /**

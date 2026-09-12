@@ -12,15 +12,23 @@ use Illuminate\Http\JsonResponse;
 class Base
 {
 
+    /**
+     * 判断当前是否为开发环境。
+     */
+    public static function isDev(): bool
+    {
+        return app()->environment(['local', 'development', 'testing', 'dev']);
+    }
 
-    public static function errJson(string $msg, array $data = [], int $code = 0): JsonResponse
+
+    public static function errJson(string $msg, array $data = [], int $code = 0, int $statusCode = 200): JsonResponse
     {
         $res['useTime'] = self::getUseTime();
         $res['status']  = "fail";
         $res['code']    = $code;
         $res['message'] = $msg;
         $res['data']    = $data;
-        return response()->json($res)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+        return response()->json($res, $statusCode)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
     }
 
     public static function sucJson(string $msg, array $data = [], int $code = 0): JsonResponse
@@ -39,7 +47,8 @@ class Base
         # 记录请求结束时间
         $endTime = microtime(true);
         # 计算请求执行时间
-        $executionTime = $endTime - request()->server('REQUEST_TIME_FLOAT');
+        $requestStart = (float) request()->server('REQUEST_TIME_FLOAT', $endTime);
+        $executionTime = max(0, $endTime - $requestStart);
         return intval($executionTime * 1000) . ' ms';
     }
 
@@ -70,7 +79,7 @@ class Base
     public static function getUploadUrl(string $savePath): string
     {
         if (self::isDev()) {
-            return config('upload.url') . 'Base.php/' . $savePath;
+            return rtrim((string) config('antmin.upload.url', config('upload.url', '')), '/') . '/' . ltrim($savePath, '/');
         } else {
             return $savePath;
         }
@@ -83,7 +92,8 @@ class Base
      */
     public static function objToArr($object): array
     {
-        return json_decode(json_encode($object), true);
+        $result = json_decode(json_encode($object), true);
+        return is_array($result) ? $result : [];
     }
 
     /**
@@ -94,6 +104,7 @@ class Base
      */
     public static function listFormat(int $limit, $query): array
     {
+        $limit = max(1, min($limit, 1000));
         $datas             = $query->paginate($limit);
         $temp              = $datas ? $datas->toArray() : [];
         $data              = $temp['data'] ?? [];
@@ -119,13 +130,17 @@ class Base
     {
         $fieldName = empty($fieldName) ? $field : $fieldName;
         if (!empty($validateRule)) {
-            $validator = Validator::make($request->all(), [$field => $validateRule], [], [$field => $fieldName]);
+            $input = is_object($request) && method_exists($request, 'all') ? $request->all() : (array) $request;
+            $validator = Validator::make($input, [$field => $validateRule], [], [$field => $fieldName]);
             if ($validator->fails()) {
                 $message = empty($msg) ? $validator->errors()->first() : $msg;
                 throw new CommonException($message);
             }
         }
-        return $request[$field];
+        if (is_object($request) && method_exists($request, 'input')) {
+            return $request->input($field);
+        }
+        return is_array($request) ? ($request[$field] ?? null) : null;
     }
 
     /**
@@ -146,8 +161,11 @@ class Base
         $queryParts = explode('&', $query);
         $params     = array();
         foreach ($queryParts as $param) {
-            $item             = explode('=', $param);
-            $params[$item[0]] = $item[1];
+            if ($param === '') {
+                continue;
+            }
+            [$key, $value] = array_pad(explode('=', $param, 2), 2, '');
+            $params[urldecode($key)] = urldecode($value);
         }
         return $params;
     }
@@ -164,7 +182,7 @@ class Base
     {
         $markStr = str_repeat('*', $length);
         if (!is_string($string)) {
-            return false;
+            return '';
         }
         $status = Base::isAllChinese($string);
         if ($status) {
@@ -179,7 +197,7 @@ class Base
         } else {
             $_length = strlen($string);
             if ($start > $_length || $length > $_length) {
-                return false;
+                return '';
             }
             return substr_replace($string, $markStr, $start, $length);
         }
@@ -193,11 +211,16 @@ class Base
      */
     public static function random(int $length, string $chars = '0123456789'): string
     {
+        if ($length <= 0) {
+            return '';
+        }
+        if ($chars === '') {
+            throw new \InvalidArgumentException('随机字符集不能为空');
+        }
         $hash = '';
         $max  = strlen($chars) - 1;
-        mt_srand();
         for ($i = 0; $i < $length; $i++) {
-            $hash .= $chars[mt_rand(0, $max)];
+            $hash .= $chars[random_int(0, $max)];
         }
         return $hash;
     }
@@ -305,7 +328,7 @@ class Base
         if (!Base::isTime($at_str)) {
             return false;
         }
-        $at    = date('Y-m-d') . ' Base.php' . trim($at_str);
+        $at    = date('Y-m-d') . ' ' . trim($at_str);
         $time  = strtotime($at);
         $_time = time();
         if ($_time >= $time) {
@@ -346,17 +369,12 @@ class Base
      */
     public static function isTime(string $str): bool
     {
-        $strArr = explode(':', $str);
-        if (empty($strArr) || count($strArr) != 3) {
+        if (preg_match('/^(\d{1,2}):(\d{1,2}):(\d{1,2})$/', trim($str), $matches) !== 1) {
             return false;
-        } else {
-            list($hour, $minute, $second) = $strArr;
-            if (intval($hour) > 23 || intval($minute) > 59 || $second > 59) {
-                return false;
-            } else {
-                return true;
-            }
         }
+        return (int) $matches[1] <= 23
+            && (int) $matches[2] <= 59
+            && (int) $matches[3] <= 59;
     }
 
 
@@ -377,6 +395,9 @@ class Base
                 return self::fillUrl($item, $url);
             }, $str);
         }
+        if (!is_string($str)) {
+            return (string) $str;
+        }
         # 定义有效 URL 前缀
         $validPrefixes = [
             'http://',
@@ -392,9 +413,9 @@ class Base
             }
         }
         # 获取默认 URL 如果未提供
-        $baseUrl = $url ?? config('upload.url');
+        $baseUrl = $url ?? config('antmin.upload.url', config('upload.url', ''));
         # 确保拼接时避免多余的斜杠
-        return rtrim($baseUrl, '/') . 'Base.php/' . ltrim($str, '/');
+        return rtrim((string) $baseUrl, '/') . '/' . ltrim($str, '/');
     }
 
 
@@ -405,14 +426,17 @@ class Base
      */
     public static function unFillUrl($str)
     {
-        $url = config('upload.url') ?? url('');
+        $url = config('antmin.upload.url', config('upload.url', url('')));
         if (is_array($str)) {
             foreach ($str as $key => $item) {
                 $str[$key] = self::unFillUrl($item);
             }
             return $str;
         }
-        $urlStr = $url . '/';
+        if (!is_string($str)) {
+            return $str;
+        }
+        $urlStr = rtrim((string) $url, '/') . '/';
         return self::leftDelete($str, $urlStr);
     }
 
@@ -459,9 +483,14 @@ class Base
      */
     public static function encrypt(string $input, string $key): string
     {
-        $key2 = substr(openssl_digest(openssl_digest($key, 'sha1', true), 'sha1', true), 0, 16);
-        $data = openssl_encrypt($input, 'aes-128-ecb', $key2, OPENSSL_RAW_DATA);
-        return base64_encode($data);
+        $key2 = hash('sha256', $key, true);
+        $iv   = random_bytes(12);
+        $tag  = '';
+        $data = openssl_encrypt($input, 'aes-256-gcm', $key2, OPENSSL_RAW_DATA, $iv, $tag);
+        if ($data === false) {
+            throw new \RuntimeException('数据加密失败');
+        }
+        return base64_encode("\x02" . $iv . $tag . $data);
     }
 
     /**
@@ -472,27 +501,29 @@ class Base
      */
     public static function decrypt(string $str, string $key): string
     {
-        $key2      = substr(openssl_digest(openssl_digest($key, 'sha1', true), 'sha1', true), 0, 16);
         $encrypted = base64_decode($str);
-        return openssl_decrypt($encrypted, 'aes-128-ecb', $key2, OPENSSL_RAW_DATA);
+        if ($encrypted !== false && strlen($encrypted) >= 29 && $encrypted[0] === "\x02") {
+            $key2 = hash('sha256', $key, true);
+            $iv   = substr($encrypted, 1, 12);
+            $tag  = substr($encrypted, 13, 16);
+            $data = substr($encrypted, 29);
+            $plain = openssl_decrypt($data, 'aes-256-gcm', $key2, OPENSSL_RAW_DATA, $iv, $tag);
+            if ($plain === false) {
+                throw new \RuntimeException('数据解密失败');
+            }
+            return $plain;
+        }
+
+        # 兼容历史 AES-128-ECB 数据，新的数据不再使用无认证加密。
+        $legacyKey = substr(openssl_digest(openssl_digest($key, 'sha1', true), 'sha1', true), 0, 16);
+        return (string) openssl_decrypt((string) $encrypted, 'aes-128-ecb', $legacyKey, OPENSSL_RAW_DATA);
     }
 
 
     public static function color(string $str, string $color): string
     {
-        if ($color == 'red') {
-            return "<span style='color:red'>" . $str . "</span>";
-        } elseif ($color == 'green') {
-            return "<span style='color:green'>" . $str . "</span>";
-        } elseif ($color == 'blue') {
-            return "<span style='color:blue'>" . $str . "</span>";
-        } elseif ($color == 'white') {
-            return "<span style='color:white'>" . $str . "</span>";
-        } elseif ($color == 'orange') {
-            return "<span style='color:orange'>" . $str . "</span>";
-        } else {
-            return "<span style='color:" . $color . "'>" . $str . "</span>";
-        }
+        $safeColor = self::safeColor($color, 'inherit');
+        return "<span style='color:" . $safeColor . "'>" . htmlspecialchars($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</span>";
     }
 
     public static function tag(string $str, string $color = 'red'): string
@@ -514,7 +545,13 @@ class Base
         } else {
             $bColor = '#fafafa';
         }
-        return '<span style="background:' . $bColor . ';color:' . $color . '; border: 1px solid ' . $color . ';border-radius: 4px;padding:2px 4px;font-size:12px;">' . $str . '</span>';
+        $color = self::safeColor($color, '#666666');
+        return '<span style="background:' . $bColor . ';color:' . $color . '; border: 1px solid ' . $color . ';border-radius: 4px;padding:2px 4px;font-size:12px;">' . htmlspecialchars($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>';
+    }
+
+    private static function safeColor(string $color, string $default): string
+    {
+        return preg_match('/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/', $color) === 1 ? $color : $default;
     }
 
     /**
@@ -578,18 +615,7 @@ class Base
      */
     public static function getMaxVersion(string $str1, string $str2): string
     {
-        # 按点号分割字符串为数组
-        $arr1 = explode('.', $str1);
-        $arr2 = explode('.', $str2);
-        # 逐个比较数组元素
-        for ($i = 0; $i < count($arr1); $i++) {
-            if ($arr1[$i] > $arr2[$i]) {
-                return $str1;   #  第一个字符串大于第二个字符串
-            } elseif ($arr1[$i] < $arr2[$i]) {
-                return $str2;   #  第一个字符串小于第二个字符串
-            }
-        }
-        return $str1;   # 字符串相等，返回第一个字符串
+        return version_compare($str1, $str2, '>') ? $str1 : $str2;
     }
 
     /**

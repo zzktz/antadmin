@@ -6,6 +6,7 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\VersionService;
 use Illuminate\Http\Request;
 
@@ -19,9 +20,14 @@ class VersionController extends BaseController
      */
     public function operate(Request $request)
     {
-        $action = $request['action'];
-        if (method_exists(self::class, $action)) return self::$action($request);
-        return errJson('No find action');
+        if ((int) ($request['accountId'] ?? 0) !== 1) {
+            throw new CommonException('无权操作');
+        }
+        $action = (string) $request->input('action', '');
+        if (in_array($action, ['checkIsNewVersion', 'updateVersion'], true) && is_callable([$this, $action])) {
+            return $this->{$action}($request);
+        }
+        return Base::errJson('操作不存在');
     }
 
     /**

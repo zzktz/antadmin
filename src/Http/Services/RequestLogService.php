@@ -10,6 +10,7 @@ use Antmin\Tool\MemberTool;
 use Antmin\Exceptions\CommonException;
 use Antmin\Http\Repositories\RequestLogRedis;
 use Antmin\Http\Repositories\RequestLogQueue;
+use Antmin\Http\Repositories\RequestLogRepository;
 
 class RequestLogService
 {
@@ -26,7 +27,7 @@ class RequestLogService
      * 过滤请求 params 参数 key
      */
     protected const KEYS_TO_REMOVE = [
-        'token', 'envVersion', 'page', 'reqUuid'
+        'token', 'access-token', 'authorization', 'password', 'captcha', 'code', 'secret', 'envVersion', 'page', 'reqUuid'
     ];
 
 
@@ -39,7 +40,7 @@ class RequestLogService
     public static function getList(int $limit, array $search = []): array
     {
         $logStorage = config('antmin.logStorage');
-        if ($logStorage == 'rabbitmq') {
+        if (in_array($logStorage, ['rabbitmq', 'database'], true)) {
             return RequestLogQueue::getList($limit, $search);
         } else {
             return RequestLogRedis::getList($limit, $search);
@@ -66,8 +67,10 @@ class RequestLogService
         }
         # 存储
         $logStorage = config('antmin.logStorage');
-        if ($logStorage == 'rabbitmq') {
+        if ($logStorage === 'rabbitmq') {
             RequestLogQueue::addStorage($data);
+        } elseif ($logStorage === 'database') {
+            RequestLogRepository::addStorage($data);
         } else {
             RequestLogRedis::addStorage($data);
         }
@@ -85,6 +88,10 @@ class RequestLogService
         if ($accountId !== 1) {
             throw new CommonException('非超级管理员无权操作');
         }
+        if (in_array(config('antmin.logStorage'), ['rabbitmq', 'database'], true)) {
+            RequestLogRepository::clearData();
+            return;
+        }
         RequestLogRedis::clearData();
     }
 
@@ -95,16 +102,16 @@ class RequestLogService
     protected static function prepareLogData(array $arr): array
     {
         $params       = self::filterParams($arr['params'] ?? []);
-        $queryLogJson = self::formatParams($arr['query_log']);
+        $queryLogJson = self::formatParams($arr['query_log'] ?? []);
 
         return [
             'uuid'             => $arr['uuid'] ?? '',
-            'app_env'          => env('APP_ENV'),
-            'app_name'         => env('APP_NAME'),
+            'app_env'          => (string) config('app.env'),
+            'app_name'         => (string) config('app.name'),
             'url'              => self::getRequestUrl($arr),
             'client'           => $arr['client'] ?? '',
             'method'           => $arr['method'] ?? '',
-            'header'           => $arr['header'] ?? '',
+            'header'           => self::redact($arr['header'] ?? []),
             'params'           => $params,
             'query_log'        => $queryLogJson, # 添加查询日志到记录数据
             'response_status'  => $arr['response_status'] ?? 0,
@@ -119,7 +126,7 @@ class RequestLogService
     protected static function getRequestUrl(array $arr): string
     {
         $url = $arr['url'] ?? '';
-        $str = parse_url($url);
+        $str = parse_url($url) ?: [];
         return $str['path'] ?? '';
     }
 
@@ -128,7 +135,7 @@ class RequestLogService
      */
     protected static function formatParams(array $params): string
     {
-        $json = json_encode($params, JSON_UNESCAPED_UNICODE);
+        $json = json_encode(self::redact($params), JSON_UNESCAPED_UNICODE) ?: '{}';
         return mb_substr($json, 0, 2000);
     }
 
@@ -140,7 +147,12 @@ class RequestLogService
         $statusCode = $arr['response_status'] ?? 0;
         $response   = $arr['response_content'] ?? '';
 
-        return $statusCode === 200 ? $response : '';
+        if ((int) $statusCode < 200 || (int) $statusCode >= 300 || $response === '') {
+            return '';
+        }
+        $decoded = json_decode($response, true);
+        $safe = is_array($decoded) ? json_encode(self::redact($decoded), JSON_UNESCAPED_UNICODE) : $response;
+        return mb_substr((string) $safe, 0, 2000);
     }
 
     /**
@@ -148,7 +160,7 @@ class RequestLogService
      */
     protected static function handleStatistics(array $arr): void
     {
-        $memberId = $arr['params']['memberId'] ?? 0;
+        $memberId = is_array($arr['params'] ?? null) ? ($arr['params']['memberId'] ?? 0) : 0;
         $key      = RequestLogRedis::getStatKey();
 
         StatTool::setEveryHourStat($key);
@@ -176,8 +188,27 @@ class RequestLogService
      */
     protected static function filterParams(array $param): array
     {
-        $keysToRemove = self::KEYS_TO_REMOVE;
-        return array_diff_key($param, array_flip($keysToRemove));
+        return self::redact($param);
+    }
+
+    /**
+     * 递归脱敏请求数据，避免密码、Token 等凭证进入日志。
+     */
+    protected static function redact($value)
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        $sensitive = array_flip(array_map('strtolower', self::KEYS_TO_REMOVE));
+        $result = [];
+        foreach ($value as $key => $item) {
+            if (isset($sensitive[strtolower((string) $key)])) {
+                $result[$key] = '[已脱敏]';
+            } else {
+                $result[$key] = is_array($item) ? self::redact($item) : $item;
+            }
+        }
+        return $result;
     }
 
     /**

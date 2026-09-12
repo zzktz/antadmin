@@ -29,6 +29,6 @@ class CommonException extends Exception
     {
         $message = $this->getMessage(); // 返回异常信息
         $data    = empty($this->data) ? [] : $this->data;
-        return Base::errJson($message, $data, $this->code);
+        return Base::errJson($message, $data, $this->code, $this->statusCode);
     }
 }

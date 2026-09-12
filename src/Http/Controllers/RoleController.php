@@ -64,7 +64,7 @@ class RoleController extends BaseController
     {
         $opId  = $request['accountId'];
         $id    = Base::getValue($request, 'id', '', 'required|integer');
-        $rules = Base::getValue($request, 'rules', '', 'array');
+        $rules = Base::getValue($request, 'rules', '', 'array') ?? [];
         $this->roleService->roleRuleEdit($rules, $id, $opId);
         return Base::sucJson('编辑成功');
     }
@@ -93,4 +93,3 @@ class RoleController extends BaseController
 
 
 }
-

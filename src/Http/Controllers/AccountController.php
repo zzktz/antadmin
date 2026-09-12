@@ -49,12 +49,16 @@ class AccountController extends BaseController
                 $token   = $this->loginService->mobileLogin($usename, $smscode);
             } else {
                 # 用户名密码登录
-                $password = $request->input('password');
+                $request->validate(['password' => 'required|string']);
+                $password = (string) $request->input('password');
                 $token    = $this->loginService->accountLogin($usename, $password);
             }
 
             return Base::sucJson('成功', ['token' => $token]);
         } catch (Exception $e) {
+            if ($e instanceof CommonException) {
+                throw $e;
+            }
             # 系统异常
             throw new CommonException('登录失败: ' . $e->getMessage());
         }
@@ -182,6 +186,7 @@ class AccountController extends BaseController
         $info['nickname'] = $request->input('username');
         $info['email']    = $request->input('email');
         $info['mobile']   = $request->input('mobile');
+        $info['roles']    = $request->input('roles', []);
 
         $this->accountService->accountEdit($info, $id, $opId);
         return Base::sucJson('账号编辑成功');
@@ -214,8 +219,9 @@ class AccountController extends BaseController
      */
     public function reInitPassword(Request $request)
     {
-        $id = Base::getValue($request, 'id', '', 'required|integer');
-        $this->accountService->reInitPassword($id);
+        $operatorId = $request['accountId'];
+        $id         = Base::getValue($request, 'id', '', 'required|integer');
+        $this->accountService->reInitPassword($id, $operatorId);
         return Base::sucJson('密码重置成功');
     }
 

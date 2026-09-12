@@ -11,6 +11,7 @@ use Antmin\Http\Repositories\AccountRepository;
 use Antmin\Http\Repositories\AccountRoleRepository;
 use Antmin\Http\Repositories\PermissionRepository;
 use Antmin\Http\Repositories\RolePermissionsRepository;
+use Illuminate\Support\Facades\DB;
 
 class RoleService
 {
@@ -75,6 +76,9 @@ class RoleService
         # 权限验证
         $this->checkPermissions($accountId);
         $this->checkSupperRoleId($id);
+        if (empty($this->roleRepo->getInfo($id))) {
+            throw new CommonException('角色不存在');
+        }
 
         $name = $info['name'];
         $one  = $this->roleRepo->getInfoByName($name);
@@ -92,14 +96,16 @@ class RoleService
     {
         $this->checkPermissions($accountId);
         $this->checkSupperRoleId($id);
-        # 删除角色下的权限
-        $this->rolePermissionsRepo->deleteByRoleId($id);
-        if (!empty($rules)) {
-            foreach ($rules as $permissionId) {
+        if (empty($this->roleRepo->getInfo($id))) {
+            throw new CommonException('角色不存在');
+        }
+        return DB::transaction(function () use ($rules, $id) {
+            $this->rolePermissionsRepo->deleteByRoleId($id);
+            foreach (array_unique(array_map('intval', $rules ?: [])) as $permissionId) {
                 $this->rolePermissionsRepo->add($id, $permissionId);
             }
-        }
-        return true;
+            return true;
+        });
     }
 
 
@@ -108,15 +114,18 @@ class RoleService
         # 权限验证
         $this->checkPermissions($accountId);
         $this->checkSupperRoleId($id);
+        if (empty($this->roleRepo->getInfo($id))) {
+            throw new CommonException('角色不存在');
+        }
         # 判断角色中是否有成员
         $isHas = $this->accountRoleRepo->isHasAccountByRoleId($id);
         if ($isHas) {
             throw new CommonException('该角色存在账号中，请先处理');
         }
-        # 删除角色下的权限
-        $this->rolePermissionsRepo->deleteByRoleId($id);
-        # 删除角色
-        return $this->roleRepo->del($id);
+        return DB::transaction(function () use ($id) {
+            $this->rolePermissionsRepo->deleteByRoleId($id);
+            return $this->roleRepo->del($id);
+        });
     }
 
     public function editStatus(int $id, int $accountId): bool
@@ -125,6 +134,9 @@ class RoleService
         $this->checkPermissions($accountId);
         $this->checkSupperRoleId($id);
         $info   = $this->roleRepo->getInfo($id);
+        if (empty($info)) {
+            throw new CommonException('角色不存在');
+        }
         $status = empty($info['status']) ? 1 : 0;
         return $this->roleRepo->edit(['status' => $status], $id);
     }

@@ -28,8 +28,8 @@ class UploadController extends BaseController
      * 允许的文件类型配置
      */
     const ALLOWED_EXTENSIONS = [
-        'image' => ['jpg', 'jpeg', 'png', 'gif', 'svg'],
-        'file'  => ['xlsx', 'xls', 'docx', 'doc', 'csv', 'pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg'],
+        'image' => ['jpg', 'jpeg', 'png', 'gif'],
+        'file'  => ['xlsx', 'xls', 'docx', 'doc', 'csv', 'pdf', 'jpg', 'jpeg', 'png', 'gif'],
         'video' => ['mp4', 'avi', 'mov', 'wmv', 'flv']
     ];
 
@@ -49,9 +49,11 @@ class UploadController extends BaseController
      */
     public function operate(Request $request)
     {
-        $action = $request['action'];
-        if (method_exists(self::class, $action)) return $this->$action($request);
-        throw new CommonException('System Not Find Action');
+        $action = (string) $request->input('action', '');
+        if (in_array($action, ['imageUpload', 'videoUpload', 'fileUpload'], true)) {
+            return $this->{$action}($request);
+        }
+        throw new CommonException('操作不存在');
     }
 
 
@@ -125,6 +127,7 @@ class UploadController extends BaseController
             if (!in_array($extension, $allowedExtensions)) {
                 throw new CommonException("不支持的文件格式: {$extension}");
             }
+            $this->validateMime($file, $extension, $fileType);
 
             #  生成存储路径和文件名
             $savePath = "/upload/{$fileType}/" . date('Ymd');
@@ -136,7 +139,7 @@ class UploadController extends BaseController
 
             #  构建响应数据
             $filePath = $savePath . '/' . $fileName;
-            $fileUrl  = config('upload.url') . $filePath;
+            $fileUrl  = rtrim((string) config('antmin.upload.url', config('upload.url', '')), '/') . '/' . ltrim($filePath, '/');
 
             $responseData = [
                 'filePath'     => $filePath,
@@ -152,6 +155,8 @@ class UploadController extends BaseController
 
             return Base::sucJson('文件上传成功', $responseData);
 
+        } catch (CommonException $e) {
+            throw $e;
         } catch (Exception $e) {
             Log::error($fileType . "上传失败", [
                 'file'  => $originalName ?? 'unknown',
@@ -171,16 +176,13 @@ class UploadController extends BaseController
      */
     private function handlePostUploadActions(Request $request, array $fileData): void
     {
-        try {
-            #  头像更新处理
-            if ($request->input('type') === 'avatar') {
-                $this->updateUserAvatar($fileData['filePath'] ?? '', $request->input('accountId'));
-            }
-        } catch (Exception $e) {
-            Log::error('上传后处理失败', [
-                'error'    => $e->getMessage(),
-                'fileData' => $fileData
-            ]);
+        # 头像更新处理
+        if ($request->input('type') === 'avatar') {
+            $this->updateUserAvatar(
+                $fileData['filePath'] ?? '',
+                (int) $request->input('accountId', $request['accountId'] ?? 0),
+                (int) ($request['accountId'] ?? 0)
+            );
         }
     }
 
@@ -191,19 +193,13 @@ class UploadController extends BaseController
      * @param mixed $accountId
      * @return void
      */
-    private function updateUserAvatar(string $avatarPath, $accountId): void
+    private function updateUserAvatar(string $avatarPath, int $accountId, int $operatorId): void
     {
-        try {
-            if (!empty($avatarPath) && !empty($accountId)) {
-                # 更新用户头像
-                $this->accountRepo->updateAvatar($avatarPath, $accountId);
-            }
-        } catch (Exception $e) {
-            Log::error('更新用户头像失败', [
-                'accountId'  => $accountId,
-                'avatarPath' => $avatarPath,
-                'error'      => $e->getMessage()
-            ]);
+        if ($accountId <= 0 || $operatorId <= 0 || ($accountId !== $operatorId && $operatorId !== 1)) {
+            throw new CommonException('无权更新该头像');
+        }
+        if ($avatarPath !== '') {
+            $this->accountRepo->updateAvatar($avatarPath, $accountId);
         }
     }
 
@@ -231,8 +227,15 @@ class UploadController extends BaseController
 
         try {
             $file         = $request->file('upfile');
+            if (!$file->isValid()) {
+                throw new CommonException('文件无效');
+            }
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, self::ALLOWED_EXTENSIONS['image'], true) || $file->getSize() > 5 * 1024 * 1024) {
+                throw new CommonException('仅支持 5MB 以内的 JPG、PNG、GIF 图片');
+            }
+            $this->validateMime($file, $extension, 'image');
             $date         = date('Ymd');
-            $extension    = $file->getClientOriginalExtension();
             $originalName = $file->getClientOriginalName();
             $fileName     = uuid() . '.' . $extension;
             $path         = "upload/file/{$date}";
@@ -241,7 +244,7 @@ class UploadController extends BaseController
             $file->storeAs($path, $fileName, 'public');
 
             #  构建响应
-            $fileUrl = config('upload.url') . '/' . $path . '/' . $fileName;
+            $fileUrl = rtrim((string) config('antmin.upload.url', config('upload.url', '')), '/') . '/' . $path . '/' . $fileName;
 
             $response = [
                 'state'    => 'SUCCESS',
@@ -257,6 +260,8 @@ class UploadController extends BaseController
 
             return response()->json($response)->setEncodingOptions(JSON_UNESCAPED_UNICODE);
 
+        } catch (CommonException $e) {
+            return response()->json(['state' => 'ERROR', 'msg' => $e->getMessage()])->setEncodingOptions(JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             Log::error('富文本编辑器上传失败', [
                 'error' => $e->getMessage()
@@ -266,6 +271,25 @@ class UploadController extends BaseController
                 'state' => 'ERROR',
                 'msg'   => '上传失败'
             ])->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * 同时校验扩展名和实际 MIME，拒绝可执行文件伪装上传。
+     */
+    private function validateMime($file, string $extension, string $fileType): void
+    {
+        $mime = strtolower((string) $file->getMimeType());
+        $mimeMap = [
+            'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'png' => ['image/png'], 'gif' => ['image/gif'],
+            'mp4' => ['video/mp4'], 'avi' => ['video/x-msvideo', 'video/avi'], 'mov' => ['video/quicktime'],
+            'wmv' => ['video/x-ms-wmv'], 'flv' => ['video/x-flv'],
+            'pdf' => ['application/pdf'], 'csv' => ['text/plain', 'text/csv', 'application/csv'],
+            'doc' => ['application/msword'], 'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            'xls' => ['application/vnd.ms-excel'], 'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        ];
+        if (!in_array($mime, $mimeMap[$extension] ?? [], true)) {
+            throw new CommonException("文件内容与扩展名不匹配");
         }
     }
 }

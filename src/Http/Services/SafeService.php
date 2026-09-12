@@ -82,8 +82,10 @@ class SafeService
      */
     private static function getKey(): string
     {
-        $userAgent = request()->header('user-agent');
-        $uid       = md5($userAgent);
+        $userAgent = (string) request()->header('user-agent', '');
+        $identity  = (string) request()->input('username', request()->input('email', ''));
+        $ip        = (string) request()->ip();
+        $uid       = md5(strtolower(trim($identity)) . '|' . $ip . '|' . $userAgent);
         return "account_safe:" . $uid;
     }
 

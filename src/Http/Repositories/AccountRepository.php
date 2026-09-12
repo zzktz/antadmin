@@ -82,8 +82,8 @@ class AccountRepository
             # 使用事务确保数据一致性
             return DB::transaction(function () use ($info) {
 
-                $password   = !empty($info['password']) ? $info['password'] : Hash::make(md5(str_random(12)));
-                $randomName = random(8, 'abcdefghijklmnopqrstuvwyz');
+                $password   = $this->hashPassword($info['password'] ?? '');
+                $randomName = Base::random(8, 'abcdefghijklmnopqrstuvwyz');
                 # 准备用户数据
                 $userData = [
                     'name'     => $info['name'] ?? $randomName,
@@ -95,7 +95,7 @@ class AccountRepository
                 # 创建用户
                 $account = $this->accountModel->create($userData);
                 # 分配角色
-                foreach ($info['roles'] as $roleId) {
+                foreach ($info['roles'] ?? [] as $roleId) {
                     $this->accountRoleModel->create([
                         'account_id' => $account->id,
                         'role_id'    => $roleId
@@ -126,6 +126,9 @@ class AccountRepository
     public function editStatus(int $status, int $id): bool
     {
         $one = $this->accountModel->find($id);
+        if (!$one) {
+            throw new CommonException('用户不存在');
+        }
         $one->update(['status' => $status]);
         return true;
     }
@@ -136,8 +139,22 @@ class AccountRepository
     public function edit(array $info, int $id): bool
     {
         $one = $this->accountModel->find($id);
+        if (!$one) {
+            throw new CommonException('用户不存在');
+        }
+        if (array_key_exists('password', $info)) {
+            $info['password'] = $this->hashPassword((string) $info['password']);
+        }
         $one->update($info);
         return true;
+    }
+
+    /**
+     * 更新密码。调用方可以传入明文或前端提交的 MD5 值，数据库始终保存 Laravel 哈希。
+     */
+    public function updatePassword(string $password, int $id): bool
+    {
+        return $this->edit(['password' => $password], $id);
     }
 
     /**
@@ -148,19 +165,15 @@ class AccountRepository
      */
     public function editRole(array $info, int $id): bool
     {
-        # 删除所有
-        $this->accountRoleModel->where('account_id', $id)->delete();
-        $roles = $info['roles'] ?? [];
-        if (empty($roles)) {
-            return true;
-        }
-        # 重新添加
-        foreach ($roles as $roleId) {
-            $this->accountRoleModel->create([
-                'account_id' => $id,
-                'role_id'    => $roleId
-            ]);
-        }
+        DB::transaction(function () use ($info, $id) {
+            $this->accountRoleModel->where('account_id', $id)->delete();
+            foreach (array_unique(array_map('intval', $info['roles'] ?? [])) as $roleId) {
+                $this->accountRoleModel->create([
+                    'account_id' => $id,
+                    'role_id'    => $roleId
+                ]);
+            }
+        });
         return true;
     }
 
@@ -169,6 +182,9 @@ class AccountRepository
     {
         # 删除用户
         $one = $this->accountModel->find($id);
+        if (!$one) {
+            throw new CommonException('用户不存在');
+        }
         $one->delete();
         # 删除用户角色关联
         $this->accountRoleModel->where('account_id', $id)->delete();
@@ -182,19 +198,19 @@ class AccountRepository
     public function getInfoByName(string $name): array
     {
         $account = $this->accountModel->where('name', $name)->first();
-        return $account ? $account->toArray() : [];
+        return $account ? $account->makeVisible('password')->toArray() : [];
     }
 
     public function getInfoByMobile(string $mobile): array
     {
         $account = $this->accountModel->where('mobile', $mobile)->first();
-        return $account ? $account->toArray() : [];
+        return $account ? $account->makeVisible('password')->toArray() : [];
     }
 
     public function getInfoByEmail(string $email): array
     {
         $account = $this->accountModel->where('email', $email)->first();
-        return $account ? $account->toArray() : [];
+        return $account ? $account->makeVisible('password')->toArray() : [];
     }
 
     public function getInfo(int $accountId): array
@@ -205,8 +221,31 @@ class AccountRepository
 
     public function findByField(string $field, string $value)
     {
+        if (!in_array($field, ['id', 'name', 'nickname', 'mobile', 'email'], true)) {
+            throw new CommonException('查询字段不合法');
+        }
         $account = $this->accountModel->where($field, $value)->first();
         return $account ? $account->toArray() : [];
+    }
+
+    /**
+     * 密码统一在后端哈希，兼容已哈希的注册数据。
+     */
+    private function hashPassword(string $password): string
+    {
+        if ($password === '') {
+            $password = Base::random(16, 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%');
+        }
+
+        if (!empty(password_get_info($password)['algo'])) {
+            return $password;
+        }
+
+        # 登录协议提交 MD5 摘要；兼容账号管理提交明文密码的旧前端。
+        $password = preg_match('/^[a-f0-9]{32}$/i', $password) === 1
+            ? strtolower($password)
+            : md5($password);
+        return Hash::make($password);
     }
 
     public function isSuperAdmin(int $accountId): bool

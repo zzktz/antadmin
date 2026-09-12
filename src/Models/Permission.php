@@ -5,6 +5,7 @@ namespace Antmin\Models;
 
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
+use Antmin\Models\RolePermission;
 
 class Permission extends Model
 {
@@ -18,7 +19,7 @@ class Permission extends Model
         parent::boot();
 
         static::deleting(function ($model) {
-            $model->roles()->detach();
+            RolePermission::where('permission_id', $model->id)->delete();
         });
     }
     

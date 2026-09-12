@@ -7,6 +7,7 @@ use Antmin\Http\Services\RequestLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RequestMonitor
 {
@@ -20,17 +21,26 @@ class RequestMonitor
         $uuid   = Str::uuid();
 
         # 在请求处理前启用查询日志
-        if (config('app.debug')) {
+        $queryLogging = (bool) (config('app.debug') && config('antmin.log_sql', false));
+        if ($queryLogging) {
             DB::enableQueryLog();
         }
 
         # 执行请求
-        $response = $next($request);
+        try {
+            $response = $next($request);
+        } catch (\Throwable $e) {
+            # 异常响应也要及时关闭查询日志，避免长驻进程持续累积 SQL。
+            if ($queryLogging) {
+                DB::disableQueryLog();
+            }
+            throw $e;
+        }
 
         if ($response instanceof JsonResponse) {
             # 获取查询日志（在禁用之前）
             $queryLog = [];
-            if (config('app.debug')) {
+            if ($queryLogging) {
                 $queryLog = DB::getQueryLog();
                 DB::disableQueryLog();
             }
@@ -46,18 +56,24 @@ class RequestMonitor
             $arr['response_content'] = $response->getContent() ?? '';
             $arr['query_log']        = self::transformQueryLog($queryLog); # 添加查询日志到记录数据
 
-            # 入库
-            RequestLogService::add($arr);
+            # 日志失败不应影响业务响应。
+            try {
+                RequestLogService::add($arr);
+            } catch (\Throwable $e) {
+                Log::warning('请求日志写入失败', ['error' => $e->getMessage()]);
+            }
 
             # 在响应中添加额外参数
             $ins = ['reqUuid' => $uuid];
             $int = $response->getData(true); # 获取数组形式的数据
-            $con = array_merge($ins, $int);
-            return response()->json($con, $response->status());
+            $con = is_array($int) ? array_merge($ins, $int) : array_merge($ins, ['data' => $int]);
+            # 保留原响应的状态码、响应头和 Cookie。
+            $response->setData($con);
+            return $response;
         }
 
         # 如果不是JsonResponse，也要禁用查询日志
-        if (config('app.debug')) {
+        if ($queryLogging) {
             DB::disableQueryLog();
         }
 

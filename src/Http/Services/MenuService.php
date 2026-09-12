@@ -13,6 +13,7 @@ use Antmin\Http\Repositories\RoleRepository;
 use Antmin\Http\Repositories\RolePermissionsRepository;
 use Antmin\Models\Menu;
 use Antmin\Models\MenuPermission;
+use Illuminate\Support\Facades\DB;
 
 class MenuService
 {
@@ -73,19 +74,23 @@ class MenuService
      * @param array $arr
      * @return array
      */
-    public function menuList(int $parentId, array $arr = []): array
+    public function menuList(int $parentId, array $arr = [], array $visited = []): array
     {
         $allData = $this->menuRepo->getAllCacheData();
         $records = collect($allData);
         # 首先获取父级记录
         $data   = $records->filter(function ($record) use ($parentId) {
-            return $record['parent_id'] === $parentId;
+            return (int) ($record['parent_id'] ?? 0) === $parentId;
         });
         $result = [];
         foreach ($data as $v) {
+            $id = (int) ($v['id'] ?? 0);
+            if ($id <= 0 || in_array($id, $visited, true)) {
+                continue;
+            }
             $pid      = $v['parent_id'] ?? 0;
             $key      = $pid . '-' . $v['id'];
-            $child    = self::menuList($v['id'], $v);
+            $child    = self::menuList($id, $v, array_merge($visited, [$id]));
             $result[] = [
                 'id'             => $v['id'],
                 'title'          => $v['title'],
@@ -120,22 +125,26 @@ class MenuService
     public function menuAdd(array $info, int $accountId): int
     {
         $this->checkPermissions($accountId);
-        $permissionIds     = $info['permissionIds'];
-        $add['parent_id']  = $info['parentId'];
+        $parentId          = (int) ($info['parentId'] ?? 0);
+        if ($parentId > 0 && empty($this->menuRepo->getInfo($parentId))) {
+            throw new CommonException('父级菜单不存在');
+        }
+        $permissionIds     = $this->normalizePermissionIds($info['permissionIds'] ?? []);
+        $add['parent_id']  = $parentId;
         $add['title']      = $info['title'];
         $add['icon']       = $info['icon'];
         $add['page_name']  = $info['pageName'];
         $add['route_path'] = $info['routePath'];
         $add['component']  = $info['component'];
         $add['redirect']   = $info['redirect'];
-        $resId             = $this->menuRepo->add($add);
-        $this->menuPermissionModel->where('menu_id', $resId)->delete();
-        if (!empty($permissionIds)) {
-            foreach ($permissionIds as $v) {
-                $this->menuPermissionModel->create(['menu_id' => $resId, 'permission_id' => $v]);
+        return DB::transaction(function () use ($add, $permissionIds) {
+            $resId = $this->menuRepo->add($add);
+            $this->menuPermissionModel->where('menu_id', $resId)->delete();
+            foreach (array_unique(array_map('intval', $permissionIds ?: [])) as $permissionId) {
+                $this->menuPermissionModel->create(['menu_id' => $resId, 'permission_id' => $permissionId]);
             }
-        }
-        return $resId;
+            return $resId;
+        });
     }
 
     /**
@@ -152,21 +161,28 @@ class MenuService
         if (empty($one)) {
             throw new CommonException('菜单信息不存在');
         }
-        $permissionIds     = $info['permissionIds'];
-        $add['parent_id']  = $info['parentId'];
+        $parentId = (int) ($info['parentId'] ?? 0);
+        if ($parentId === $id || ($parentId > 0 && $this->isDescendant($parentId, $id))) {
+            throw new CommonException('父级菜单不能设置为当前菜单或其子菜单');
+        }
+        if ($parentId > 0 && empty($this->menuRepo->getInfo($parentId))) {
+            throw new CommonException('父级菜单不存在');
+        }
+        $permissionIds     = $this->normalizePermissionIds($info['permissionIds'] ?? []);
+        $add['parent_id']  = $parentId;
         $add['title']      = $info['title'];
         $add['icon']       = $info['icon'];
         $add['page_name']  = $info['pageName'];
         $add['route_path'] = $info['routePath'];
         $add['component']  = $info['component'];
         $add['redirect']   = $info['redirect'];
-        $this->menuPermissionModel->where('menu_id', $id)->delete();
-        if (!empty($permissionIds)) {
-            foreach ($permissionIds as $v) {
-                $this->menuPermissionModel->create(['menu_id' => $id, 'permission_id' => $v]);
+        return DB::transaction(function () use ($add, $permissionIds, $id) {
+            $this->menuPermissionModel->where('menu_id', $id)->delete();
+            foreach (array_unique(array_map('intval', $permissionIds ?: [])) as $permissionId) {
+                $this->menuPermissionModel->create(['menu_id' => $id, 'permission_id' => $permissionId]);
             }
-        }
-        return $this->menuRepo->edit($add, $id);
+            return $this->menuRepo->edit($add, $id);
+        });
     }
 
     /**
@@ -178,11 +194,17 @@ class MenuService
     public function menuDel(int $id, int $accountId): bool
     {
         $this->checkPermissions($accountId);
+        if (empty($this->menuRepo->getInfo($id))) {
+            throw new CommonException('菜单信息不存在');
+        }
         $data = $this->menuRepo->getDataByParentId($id);
         if (!empty($data)) {
             throw new CommonException('有子级不可删除');
         }
-        return $this->menuRepo->del($id);
+        return DB::transaction(function () use ($id) {
+            $this->menuPermissionModel->where('menu_id', $id)->delete();
+            return $this->menuRepo->del($id);
+        });
     }
 
     /**
@@ -243,6 +265,32 @@ class MenuService
         if (!$this->accountRepo->isSuperAdmin($accountId)) {
             throw new CommonException('非超级管理员无权操作');
         }
+    }
+
+    /**
+     * 检查待设置的父级菜单是否位于当前菜单的子树中。
+     */
+    private function isDescendant(int $parentId, int $menuId): bool
+    {
+        $visited = [];
+        $current = $parentId;
+        while ($current > 0 && !in_array($current, $visited, true)) {
+            if ($current === $menuId) {
+                return true;
+            }
+            $visited[] = $current;
+            $parent = $this->menuRepo->getInfo($current);
+            $current = (int) ($parent['parent_id'] ?? 0);
+        }
+        return false;
+    }
+
+    /**
+     * 清洗菜单权限 ID，避免重复值和非正数进入关联表。
+     */
+    private function normalizePermissionIds(array $permissionIds): array
+    {
+        return array_values(array_unique(array_filter(array_map('intval', $permissionIds), static fn (int $id): bool => $id > 0)));
     }
 
 }

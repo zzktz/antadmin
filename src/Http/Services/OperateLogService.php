@@ -5,7 +5,7 @@
 
 namespace Antmin\Http\Services;
 
-use App\Common\Base;
+use Antmin\Common\Base;
 use Antmin\Http\Repositories\AccountRepository;
 use Antmin\Http\Repositories\OperateLogRepository;
 
@@ -65,7 +65,7 @@ class OperateLogService
     {
         $accountId         = request()['accountId'];
         $accountInfo       = $this->accountRepo->getInfo($accountId);
-        $accountName       = $accountInfo['username'];
+        $accountName       = $accountInfo['nickname'] ?? '';
         $operate           = Base::utf8Substr($operate, 50, 0);
         $action            = Base::utf8Substr($action, 50, 0);
         $add['operate']    = $operate;

@@ -21,6 +21,10 @@ class PasswordService
      */
     public static function checkPasswordStrength(string $password): void
     {
+        # 前端登录协议会提交一次 MD5，无法在后端还原原始密码；对合法 MD5 摘要直接交给数据库哈希。
+        if (preg_match('/^[a-f0-9]{32}$/i', $password) === 1) {
+            return;
+        }
         # 1. 基本长度检查
         $passwordLength = mb_strlen($password, 'UTF-8');
         if ($passwordLength < 6 || $passwordLength > 16) {

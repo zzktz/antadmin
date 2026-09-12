@@ -63,6 +63,7 @@ class Middleware
      */
     private function getMethodName(string $path): string
     {
+        $result = '';
         # 如果字符串以 'api' 开头，按 '/' 分割并获取第二部分
         $parts = explode('/', $path);
         if (str_starts_with($path, 'api')) {

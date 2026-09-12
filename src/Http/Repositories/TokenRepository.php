@@ -17,9 +17,6 @@ use Illuminate\Support\Facades\Log;
 
 class TokenRepository
 {
-    private const TOKEN_EXPIRE_MINUTES = 60 * 24 * 30;
-    private const MAX_TOKENS_PER_USER  = 3;
-    private const REDIS_KEY_PREFIX     = 'account_tokens:';
     private const ROLE_NAME            = 'antadmin';
 
     /**
@@ -58,6 +55,11 @@ class TokenRepository
             if (!$this->isTokenExists($token, $id)) {
                 throw new CommonException('超过终端最大许可数，设备下线。');
             }
+            $account = $this->accountModel->find($id);
+            $attributes = $account?->getAttributes() ?? [];
+            if (!$account || (int) ($account->status ?? 0) !== 1 || (array_key_exists('deleted', $attributes) && (int) $account->deleted !== 0)) {
+                throw new CommonException('账号已被禁用');
+            }
             return $id;
         } catch (TokenExpiredException $e) {
             throw new CommonException('Token 过期，请重新获取');
@@ -81,10 +83,15 @@ class TokenRepository
         if (!$accountInfo) {
             throw new CommonException('账户不存在，无法生成Token');
         }
+        $attributes = $accountInfo->getAttributes();
+        if ((int) ($accountInfo->status ?? 0) !== 1 || (array_key_exists('deleted', $attributes) && (int) $accountInfo->deleted !== 0)) {
+            throw new CommonException('账号已被禁用');
+        }
 
+        $ttl = max(1, (int) config('antmin.token.ttl', 43200));
         $customClaims = [
-            'exp'           => now()->addMinutes(self::TOKEN_EXPIRE_MINUTES)->timestamp,
-            'ttl'           => self::TOKEN_EXPIRE_MINUTES,
+            'exp'           => now()->addMinutes($ttl)->timestamp,
+            'ttl'           => $ttl,
             self::ROLE_NAME => self::ROLE_NAME,
         ];
 
@@ -101,20 +108,24 @@ class TokenRepository
      */
     private function saveTokens(string $token, int $id): void
     {
-        $key = self::REDIS_KEY_PREFIX . $id;
+        $key = $this->getRedisKey($id);
         # 使用注入的 redisConnection 实例
         $redis = $this->redisConnection;
 
         # 使用流水线
         $redis->pipeline(function ($pipe) use ($key, $token) {
             $milliseconds = intval(microtime(true) * 1000);
-            $pipe->zadd($key, $milliseconds, $token);
-            $pipe->expire($key, 60 * 60 * 24 * 30);
+            # Redis 中只保存 Token 摘要，避免泄露可直接使用的凭证。
+            $pipe->zadd($key, $milliseconds, $this->tokenFingerprint($token));
+            $pipe->expire($key, max(60, (int) config('antmin.token.ttl', 43200) * 60));
         });
 
-        # 原子化删除旧Token
-        $removeEndIndex = -(self::MAX_TOKENS_PER_USER + 1);
-        $redis->zremrangebyrank($key, 0, $removeEndIndex);
+        # 删除超出设备上限的旧 Token，避免使用负索引导致全部令牌被误删。
+        $maxTokens = max(1, (int) config('antmin.token.max_devices', 3));
+        $tokenCount = (int) $redis->zcard($key);
+        if ($tokenCount > $maxTokens) {
+            $redis->zremrangebyrank($key, 0, $tokenCount - $maxTokens - 1);
+        }
     }
 
     /**
@@ -125,9 +136,26 @@ class TokenRepository
      */
     private function isTokenExists(string $token, int $id): bool
     {
-        $key = self::REDIS_KEY_PREFIX . $id;
-        # 使用注入的 redisConnection 实例
-        $score = $this->redisConnection->zscore($key, $token);
-        return $score !== null;
+        $key = $this->getRedisKey($id);
+        $score = $this->redisConnection->zscore($key, $this->tokenFingerprint($token));
+        return $score !== null && $score !== false;
+    }
+
+    /**
+     * 注销当前 Token。
+     */
+    public function revokeToken(string $token, int $accountId): void
+    {
+        $this->redisConnection->zrem($this->getRedisKey($accountId), $this->tokenFingerprint($token));
+    }
+
+    private function getRedisKey(int $accountId): string
+    {
+        return (string) config('antmin.token.redis_prefix', 'antmin:account_tokens:') . $accountId;
+    }
+
+    private function tokenFingerprint(string $token): string
+    {
+        return hash('sha256', $token);
     }
 }

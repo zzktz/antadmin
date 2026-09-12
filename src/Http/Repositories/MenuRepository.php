@@ -24,12 +24,14 @@ class MenuRepository
 
     public function edit(array $info, int $id): bool
     {
-        return $this->menuModel->find($id)->update($info);
+        $menu = $this->menuModel->find($id);
+        return $menu ? $menu->update($info) : false;
     }
 
     public function del(int $id): bool
     {
-        return $this->menuModel->find($id)->delete();
+        $menu = $this->menuModel->find($id);
+        return $menu ? (bool) $menu->delete() : false;
     }
 
     public function getInfo(int $id): array
@@ -48,7 +50,7 @@ class MenuRepository
         $allData  = $this->menuModel->getAllCacheData();
         $records  = collect($allData);
         $fRecords = $records->filter(function ($record) use ($parentId) {
-            return $record['parent_id'] === $parentId;
+            return (int) ($record['parent_id'] ?? 0) === $parentId;
         });
         $result   = $fRecords->map(function ($record) {
             return [

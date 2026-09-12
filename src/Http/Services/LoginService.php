@@ -49,8 +49,11 @@ class LoginService
             if (empty($info)) {
                 throw new CommonException('账户或密码错误');
             }
-            $_password = $info['password'];
-            if (!Hash::check($password, $_password)) {
+            if (!$this->isAccountActive($info)) {
+                throw new CommonException('账号已被禁用');
+            }
+            $_password = (string) ($info['password'] ?? '');
+            if ($_password === '' || !$this->checkPassword($password, $_password)) {
                 throw new CommonException('账户或密码错误');
             }
 
@@ -80,12 +83,13 @@ class LoginService
         if (!empty($one)) {
             throw new CommonException('邮箱已注册');
         }
-        $verify = EmailService::verifyCode($email, $code);
+        $verify = EmailService::verifyCode($email, $code, 'register');
         if (empty($verify)) {
             throw new CommonException('邮箱验证码不正确');
         }
         # 进行注册
-        $info['password'] = Hash::make($password);
+        # 密码哈希统一由账号仓储完成，避免重复哈希导致无法登录。
+        $info['password'] = $password;
         $info['email']    = $email;
         $info['roles']    = [4];
         $accountId        = $this->accountRepo->add($info);
@@ -109,7 +113,8 @@ class LoginService
                 throw new CommonException('邮箱已注册');
             }
         }
-        EmailService::sendCode($email);
+        $codeType = $type === 'forget' ? 'forget' : 'register';
+        EmailService::sendCode($email, $codeType);
         return true;
     }
 
@@ -134,6 +139,9 @@ class LoginService
         if (empty($info)) {
             throw new CommonException('手机号不存在');
         }
+        if (!$this->isAccountActive($info)) {
+            throw new CommonException('账号已被禁用');
+        }
         return $this->tokenRepo->getTokenById($info['id']);
     }
 
@@ -150,14 +158,42 @@ class LoginService
         if (empty($info)) {
             throw new CommonException('邮箱未注册');
         }
-        $verify = EmailService::verifyCode($email, $code);
+        $verify = EmailService::verifyCode($email, $code, 'forget');
         if (empty($verify)) {
             throw new CommonException('邮箱验证码不正确');
         }
 
-        $up['password'] = Hash::make($password);
-        $this->accountRepo->edit($up, $info['id']);
+        $this->accountRepo->updatePassword($password, (int) $info['id']);
         return true;
+    }
+
+    /**
+     * 账号状态必须在登录和 Token 鉴权时保持一致。
+     */
+    private function isAccountActive(array $info): bool
+    {
+        return (int) ($info['status'] ?? 0) === 1 && (int) ($info['deleted'] ?? 0) === 0;
+    }
+
+    /**
+     * 兼容标准 MD5 登录协议和旧前端明文登录协议。
+     */
+    private function checkPassword(string $password, string $hashedPassword): bool
+    {
+        $normalized = preg_match('/^[a-f0-9]{32}$/i', $password) === 1
+            ? strtolower($password)
+            : $password;
+        $candidates = [$normalized];
+        if ($normalized === $password) {
+            $candidates[] = md5($password);
+        }
+
+        foreach (array_unique($candidates) as $candidate) {
+            if (Hash::check($candidate, $hashedPassword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

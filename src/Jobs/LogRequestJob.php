@@ -2,6 +2,7 @@
 
 namespace Antmin\Jobs;
 
+use Antmin\Models\RequestLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,10 +27,9 @@ class LogRequestJob implements ShouldQueue
 
     public function handle()
     {
-
+        RequestLog::query()->create($this->data);
     }
 
 
 
 }
-

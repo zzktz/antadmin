@@ -11,6 +11,7 @@ use Antmin\Exceptions\CommonException;
 use Antmin\Http\Repositories\SystemSetDetailRepository;
 use Antmin\Http\Repositories\SystemSetItemRepository;
 use Antmin\Http\Repositories\SystemSetRepository;
+use Illuminate\Support\Facades\DB;
 
 
 class SystemSetService
@@ -83,43 +84,63 @@ class SystemSetService
         if (empty($data)) {
             throw new CommonException('infoData数据不可以为空');
         }
-        foreach ($data as $v) {
-            $detailId        = $v['id'];
-            $itemType        = $v['itemType'];
-            $tempoptionValue = $v['answerValue'];
-            $tempValue       = $v['answerValue'];
+        return DB::transaction(function () use ($data): bool {
+            foreach ($data as $v) {
+                if (!is_array($v) || !isset($v['id'], $v['itemType']) || !array_key_exists('answerValue', $v)) {
+                    throw new CommonException('系统配置数据格式不正确');
+                }
+                $detailId = (int) $v['id'];
+                if ($detailId <= 0 || empty(SystemSetDetailRepository::getInfo($detailId))) {
+                    throw new CommonException('系统配置项不存在');
+                }
+                $itemType        = (string) $v['itemType'];
+                $tempoptionValue = $v['answerValue'];
+                $tempValue       = $v['answerValue'];
+                $allowedTypes = ['input_mini', 'input_more', 'choose_single', 'choose_more', 'time_single', 'time_more', 'pull_menu', 'image_single', 'image_more', 'rich_text', 'switch'];
+                if (!in_array($itemType, $allowedTypes, true)) {
+                    throw new CommonException('系统配置项类型不正确');
+                }
 
-            if ($itemType == 'choose_single') {     # 单选
-                $arr             = SystemSetService::getFormatRadio($v);
-                $tempoptionValue = $arr['op_value'];
-                $tempValue       = $arr['value'];
-            } elseif ($itemType == 'choose_more') { # 多选
-                $arr             = SystemSetService::getFormatCheckBox($v);
-                $tempoptionValue = $arr['op_value'];
-                $tempValue       = $arr['value'];
-            } elseif ($itemType == 'pull_menu') {   # 下拉
-                $arr             = SystemSetService::getFormatRadio($v);
-                $tempoptionValue = $arr['op_value'];
-                $tempValue       = $arr['value'];
-            } elseif ($itemType == 'time_more') {   # 时间段
-                $arr             = SystemSetService::getFormatTimeArr($v);
-                $tempoptionValue = $arr['op_value'];
-                $tempValue       = $arr['value'];
-            } elseif ($itemType == 'image_single') { # 单图
-                $value           = $v['answerValue'] ? Base::unFillUrl($v['answerValue']) : '';
-                $tempoptionValue = $value;
-                $tempValue       = $value;
-            } elseif ($itemType == 'image_more') {   # 多图
-                $arr             = SystemSetService::getFormatImgArr($v);
-                $tempoptionValue = $arr['op_value'];
-                $tempValue       = $arr['value'];
+                if ($itemType == 'choose_single') {     # 单选
+                    $v['tabdatas'] = is_array($v['tabdatas'] ?? null) ? $v['tabdatas'] : [];
+                    $arr             = SystemSetService::getFormatRadio($v);
+                    $tempoptionValue = $arr['op_value'];
+                    $tempValue       = $arr['value'];
+                } elseif ($itemType == 'choose_more') { # 多选
+                    $v['answerValue'] = is_array($v['answerValue']) ? $v['answerValue'] : [];
+                    $arr             = SystemSetService::getFormatCheckBox($v);
+                    $tempoptionValue = $arr['op_value'];
+                    $tempValue       = $arr['value'];
+                } elseif ($itemType == 'pull_menu') {   # 下拉
+                    $v['tabdatas'] = is_array($v['tabdatas'] ?? null) ? $v['tabdatas'] : [];
+                    $arr             = SystemSetService::getFormatRadio($v);
+                    $tempoptionValue = $arr['op_value'];
+                    $tempValue       = $arr['value'];
+                } elseif ($itemType == 'time_more') {   # 时间段
+                    $v['answerValue'] = is_array($v['answerValue']) ? $v['answerValue'] : [];
+                    $arr             = SystemSetService::getFormatTimeArr($v);
+                    $tempoptionValue = $arr['op_value'];
+                    $tempValue       = $arr['value'];
+                } elseif ($itemType == 'image_single') { # 单图
+                    $value           = $v['answerValue'] ? Base::unFillUrl($v['answerValue']) : '';
+                    $tempoptionValue = $value;
+                    $tempValue       = $value;
+                } elseif ($itemType == 'image_more') {   # 多图
+                    $arr             = SystemSetService::getFormatImgArr($v);
+                    $tempoptionValue = $arr['op_value'];
+                    $tempValue       = $arr['value'];
+                }
+
+                if (!is_scalar($tempoptionValue) && $tempoptionValue !== null) {
+                    throw new CommonException('系统配置值格式不正确');
+                }
+
+                $upInfo['option_value'] = $tempoptionValue;
+                $upInfo['value']        = $tempValue;
+                SystemSetDetailRepository::edit($upInfo, $detailId);
             }
-
-            $upInfo['option_value'] = $tempoptionValue;
-            $upInfo['value']        = $tempValue;
-            SystemSetDetailRepository::edit($upInfo, $detailId);
-        }
-        return true;
+            return true;
+        });
     }
 
 

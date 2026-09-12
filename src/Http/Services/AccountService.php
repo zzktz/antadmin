@@ -16,12 +16,10 @@ use Antmin\Http\Repositories\TokenRepository;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class AccountService
 {
-
-
-    protected const DEF_PASSWORD = 'a@123456';
 
 
     /**
@@ -96,13 +94,15 @@ class AccountService
         $nickname = $info['nickname'];
         $email    = $info['email'];
         $mobile   = $info['mobile'];
-        $roles    = $info['roles'];
-        $password = $info['password'];
+        $roles    = $info['roles'] ?? [];
+        $password = (string) ($info['password'] ?? '');
 
         # 权限验证
         $this->checkPermissions($accountId);
         # 密码强度验证
-        PasswordService::checkPasswordStrength($password);
+        if ($password !== '') {
+            PasswordService::checkPasswordStrength($password);
+        }
 
         # 参数验证
         if (empty($roles)) {
@@ -149,7 +149,7 @@ class AccountService
 
         $email  = $info['email'];
         $mobile = $info['mobile'];
-        $roles  = $info['roles'];
+        $roles  = $info['roles'] ?? [];
 
         # 唯一性检查
         $infoByMobile = $this->accountRepo->getInfoByMobile($mobile);
@@ -167,8 +167,13 @@ class AccountService
             throw new CommonException('超级管理员角色不可以添加');
         }
 
-        # 执行编辑
-        return $this->accountRepo->edit($info, $id);
+        # 执行编辑并同步角色，两个变更必须在同一个事务中完成
+        return DB::transaction(function () use ($info, $roles, $id) {
+            unset($info['roles']);
+            $result = $this->accountRepo->edit($info, $id);
+            $this->accountRepo->editRole(['roles' => $roles], $id);
+            return $result;
+        });
     }
 
     /**
@@ -280,9 +285,15 @@ class AccountService
      * @param int $accountId
      * @return void
      */
-    public function reInitPassword(int $accountId)
+    public function reInitPassword(int $accountId, int $operatorId): void
     {
-        $this->accountRepo->updatePassword(self::DEF_PASSWORD, $accountId);
+        $this->checkPermissions($operatorId);
+        if (empty($this->accountRepo->getInfo($accountId))) {
+            throw new CommonException('用户不存在');
+        }
+        # 前端登录协议提交一次 MD5，重置密码也保存对应的协议值哈希。
+        $defaultPassword = (string) config('antmin.default_password', '86662825');
+        $this->accountRepo->updatePassword(md5($defaultPassword), $accountId);
     }
 
 

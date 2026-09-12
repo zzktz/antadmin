@@ -24,9 +24,14 @@ class OperateLogController extends BaseController
 
     public function operate(Request $request)
     {
-        $action = $request['action'];
-        if (method_exists(self::class, $action)) return $this->$action($request);
-        throw new CommonException('System Not Find Action');
+        if ((int) ($request['accountId'] ?? 0) !== 1) {
+            throw new CommonException('无权操作');
+        }
+        $action = (string) $request->input('action', '');
+        if (in_array($action, ['index'], true) && is_callable([$this, $action])) {
+            return $this->{$action}($request);
+        }
+        throw new CommonException('操作不存在');
     }
 
     /**
@@ -43,7 +48,7 @@ class OperateLogController extends BaseController
         $search['date_arr']     = Base::getValue($request, 'time', '', '');
         $limit                  = $limit ?? 10;
         $res                    = $this->operateLogService->getList($limit, $search);
-        return sucJson('ok', $res);
+        return Base::sucJson('ok', $res);
     }
 
 }

@@ -9,14 +9,18 @@ class ServiceProvider extends BaseServiceProvider
 {
     public function register()
     {
+        # 合并默认配置，宿主项目仅需覆盖需要调整的选项。
+        $this->mergeConfigFrom(__DIR__ . '/../../config/antmin.php', 'antmin');
         # 注册配置为单例
         $this->app->singleton('antmin.config', function () {
-            return config('antmin.connections', []);
+            return config('antmin', []);
         });
     }
 
     public function boot()
     {
+        $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
+
         # 声明配置文件是可发布的
         $this->publishes([
             __DIR__ . '/../../config/antmin.php' => config_path('antmin.php'),

@@ -8,7 +8,6 @@ namespace Antmin\Http\Controllers;
 use Antmin\Common\Base;
 use Antmin\Tool\CacheTool;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class LogsController extends BaseController
@@ -21,12 +20,14 @@ class LogsController extends BaseController
      */
     public function operate(Request $request)
     {
-        if ($request['accountId'] != 1) {
+        if ((int) $request['accountId'] !== 1) {
             return Base::errJson('无权操作');
         }
-        $action = $request['action'];
-        if (method_exists(self::class, $action)) return self::$action($request);
-        return Base::errJson('No find action');
+        $action = (string) $request->input('action', '');
+        if (in_array($action, ['index', 'clear', 'clearCache'], true) && is_callable([self::class, $action])) {
+            return self::{$action}($request);
+        }
+        return Base::errJson('操作不存在');
     }
 
     /**
@@ -37,8 +38,10 @@ class LogsController extends BaseController
     {
         $type    = Base::getValue($request, 'type', '', 'required|max:50');
         $path    = self::getLogPathByType($type);
-        $string  = Storage::disk('storage')->get($path);
-        $content = nl2br($string);
+        $string  = Storage::disk('storage')->exists($path)
+            ? (string) Storage::disk('storage')->get($path)
+            : '';
+        $content = nl2br(htmlspecialchars($string, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
         return Base::sucJson('成功', ['content' => $content]);
     }
 
@@ -52,7 +55,7 @@ class LogsController extends BaseController
         $path = self::getLogPathByType($type);
         $stor = Storage::disk('storage');
         if ($stor->exists($path)) {
-            File::put($stor->path($path), '上次清空:' . date('Y-m-d H:i:s') . PHP_EOL);
+            $stor->put($path, '上次清空:' . date('Y-m-d H:i:s') . PHP_EOL);
         } else {
             return Base::errJson('不存在');
         }

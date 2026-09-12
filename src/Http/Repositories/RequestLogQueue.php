@@ -4,7 +4,7 @@ namespace Antmin\Http\Repositories;
 
 
 use Antmin\Exceptions\CommonException;
-use App\Jobs\LogRequestJob;
+use Antmin\Jobs\LogRequestJob;
 use Illuminate\Support\Facades\Redis;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Exception\AMQPConnectionClosedException;

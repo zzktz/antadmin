@@ -14,6 +14,7 @@ class Account extends Authenticatable implements JWTSubject
 
     protected $table = 'system_account';
     protected $guarded = ['id'];
+    protected $hidden = ['password', 'remember_token'];
 
     public static string $guardRole = 'antadmin';
 

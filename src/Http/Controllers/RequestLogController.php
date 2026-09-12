@@ -6,6 +6,7 @@
 namespace Antmin\Http\Controllers;
 
 use Antmin\Common\Base;
+use Antmin\Exceptions\CommonException;
 use Antmin\Http\Services\RequestLogService;
 use Illuminate\Http\Request;
 
@@ -19,9 +20,14 @@ class RequestLogController extends BaseController
      */
     public function operate(Request $request)
     {
+        if ((int) ($request['accountId'] ?? 0) !== 1) {
+            throw new CommonException('无权操作');
+        }
         $action = Base::getValue($request, 'action', '', 'required');
-        if (method_exists(self::class, $action)) return self::$action($request);
-        return errJson('No find action');
+        if (in_array($action, ['index', 'clear'], true) && is_callable([self::class, $action])) {
+            return self::{$action}($request);
+        }
+        return Base::errJson('操作不存在');
     }
 
     /**
@@ -33,7 +39,7 @@ class RequestLogController extends BaseController
     {
         $limit                     = Base::getValue($request, 'pageSize', '', 'integer');
         $search['id']              = Base::getValue($request, 'id', '', 'integer');
-        $dateArr                   = Base::getValue($request, 'request_at', '', 'array');
+        $dateArr                   = Base::getValue($request, 'request_at', '', 'array') ?? [];
         $search['app_env']         = Base::getValue($request, 'app_env', '', '');
         $search['client']          = Base::getValue($request, 'client', '', '');
         $search['response_status'] = Base::getValue($request, 'response_status', '', '');
@@ -43,7 +49,7 @@ class RequestLogController extends BaseController
         }
         $limit = $limit ?? 5;
         $data  = RequestLogService::getList($limit, $search);
-        return sucJson('成功', $data);
+        return Base::sucJson('成功', $data);
     }
 
     /**
@@ -55,6 +61,6 @@ class RequestLogController extends BaseController
     {
         $accountId = $request['accountId'];
         RequestLogService::clear($accountId);
-        return sucJson('成功');
+        return Base::sucJson('成功');
     }
 }

@@ -11,6 +11,7 @@ use Antmin\Http\Services\AccountService;
 use Antmin\Http\Services\LoginService;
 use Antmin\Http\Services\PermissionsService;
 use Antmin\Http\Services\SmsService;
+use Antmin\Http\Repositories\TokenRepository;
 
 
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class EnterController extends BaseController
         protected LoginService          $loginService,
         protected SmsService            $smsService,
         protected PermissionsService    $permissionsService,
+        protected TokenRepository       $tokenRepository,
 
         protected MenuController        $menuController,
         protected AccountController     $accountController,
@@ -40,9 +42,22 @@ class EnterController extends BaseController
 
     public function operate(Request $request)
     {
-        $action = $request['action'];
-        if (method_exists(self::class, $action)) return $this->$action($request);
-        throw new CommonException('System Not Find Action');
+        $action = (string) $request->input('action', '');
+        $allowedActions = [
+            'getSmsCode', 'logout', 'step2Code', 'getUserInfo',
+            'getMenuNav', 'menuList', 'menuAdd', 'menuEdit', 'menuDel', 'menuEditListorder', 'menuEditIsShow', 'menuEditIsHideChildren',
+            'personalInfoEdit', 'accountList', 'accountAdd', 'accountEdit', 'accountEditStatus', 'accountDel', 'reInitPassword',
+            'roleList', 'roleAdd', 'roleEdit', 'roleRuleEdit', 'roleEditStatus', 'roleDel',
+            'permissionsList', 'permissionsTree', 'permissionsAdd', 'permissionsEdit', 'permissionsEditStatus', 'permissionsDel',
+            'systemSetMiniNav', 'systemSetList', 'systemSetAdd', 'systemSetEdit', 'systemSetDel', 'systemSetEditListorder', 'systemSetEditIsShow',
+            'systemSetOneDetailContent', 'systemSetOneDetailConfig', 'systemSetOneDetailConfigAdd', 'systemSetOneDetailConfigEdit',
+            'systemSetOneDetailConfigDel', 'systemSetOneDetailConfigEditListorder', 'systemSetOneDetailConfiEditTip',
+            'systemSetOneDetailConfigIsShowSwitch', 'systemSetOneDetailConfigIsRequiredSwitch',
+        ];
+        if (in_array($action, $allowedActions, true) && is_callable([$this, $action])) {
+            return $this->{$action}($request);
+        }
+        throw new CommonException('操作不存在');
     }
 
 
@@ -61,8 +76,12 @@ class EnterController extends BaseController
     }
 
 
-    protected function logout()
+    protected function logout(Request $request)
     {
+        $token = (string) $request->header('Access-Token', '');
+        if ($token !== '') {
+            $this->tokenRepository->revokeToken($token, (int) $request['accountId']);
+        }
         return Base::sucJson('成功');
     }
 
@@ -216,7 +235,7 @@ class EnterController extends BaseController
         return $this->permissionsController->permissionsList($request);
     }
 
-    protected function permissionsTree()
+    protected function permissionsTree($request = null)
     {
         return $this->permissionsController->permissionsTree();
     }
@@ -247,12 +266,12 @@ class EnterController extends BaseController
      */
     protected function systemSetMiniNav()
     {
-        return SystemSetController::systemSetMiniNav();
+        return SystemSetController::systemSetMiniNav(request());
     }
 
     protected function systemSetList()
     {
-        return SystemSetController::systemSetList();
+        return SystemSetController::systemSetList(request());
     }
 
     protected function systemSetAdd($request)
@@ -281,7 +300,7 @@ class EnterController extends BaseController
     }
 
 
-    protected static function systemSetOneDetailContent($request)
+    protected function systemSetOneDetailContent($request)
     {
         return SystemSetController::systemSetOneDetailContent($request);
     }

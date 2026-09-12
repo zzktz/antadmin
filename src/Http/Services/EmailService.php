@@ -22,10 +22,10 @@ class EmailService
         self::sendCode('1271292479@qq.com');
     }
 
-    public static function sendCode(string $email): bool
+    public static function sendCode(string $email, string $type = 'default'): bool
     {
         try {
-            $key     = md5($email);
+            $key     = self::getCodeKey($email, $type);
             $code    = Base::random(6);
             $flagMin = $key . '_flag_min';
 
@@ -60,9 +60,9 @@ class EmailService
         }
     }
 
-    public static function verifyCode(string $email, string $code): bool
+    public static function verifyCode(string $email, string $code, string $type = 'default'): bool
     {
-        $key = md5($email);
+        $key = self::getCodeKey($email, $type);
         if (!Redis::exists($key)) {
             return false;
         }
@@ -70,9 +70,15 @@ class EmailService
         if ($_code !== $code) {
             return false;
         }
+        # 验证码成功后立即消费，避免重复使用。
+        Redis::del($key);
         return true;
+    }
+
+    private static function getCodeKey(string $email, string $type): string
+    {
+        return 'antmin:email_code:' . md5(strtolower(trim($email)) . '|' . ($type ?: 'default'));
     }
 
 
 }
-

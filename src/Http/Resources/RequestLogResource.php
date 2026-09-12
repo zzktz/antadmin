@@ -18,6 +18,14 @@ class RequestLogResource
     public static function getList(int $limit, array $search = []): array
     {
         $res = RequestLogRedis::getListData($limit, $search);
+        return self::getFormatList($res);
+    }
+
+    /**
+     * 格式化数据库或 Redis 返回的请求日志分页数据。
+     */
+    public static function getFormatList(array $res): array
+    {
         if (empty($res['data'])) {
             return $res;
         }
@@ -71,7 +79,10 @@ class RequestLogResource
         $rest = [];
 
         foreach ($res['data'] as $k => $v) {
-            $queryLog = !empty($v['query_log']) ? json_decode($v['query_log'], true) : [];
+            $queryLogValue = $v['query_log'] ?? '';
+            $queryLog = is_array($queryLogValue)
+                ? $queryLogValue
+                : (!empty($queryLogValue) ? (json_decode($queryLogValue, true) ?: []) : []);
 
             $client          = $colorClient($v['client'] ?? '');
             $app_env         = $colorAppEnv($v['app_env'] ?? '');
@@ -84,6 +95,12 @@ class RequestLogResource
             } else {
                 $systemType = '';
                 $envVersion = '';
+            }
+
+            $content = [];
+            if (!empty($v['response_content'])) {
+                $contentValue = is_array($v['response_content']) ? $v['response_content'] : json_decode($v['response_content'], true);
+                $content = is_array($contentValue) ? $contentValue : [];
             }
 
             $rest[$k] = [
@@ -102,11 +119,10 @@ class RequestLogResource
                 'is_sql'          => !empty($queryLog) ? Base::tag('有') : Base::tag('无', 'green'),
                 'sqlres'          => $queryLog,
                 'is_expand'       => false,
-                'content'         => !empty($v['response_content']) ? json_decode($v['response_content'], true) : [],
-                'paramsarr'       => $v['params'],
+                'paramsarr'       => $v['params'] ?? [],
                 # 执行时间
-                'executionTime'   => !empty($v['response_content']) ?
-                    (json_decode($v['response_content'], true)['useTime'] ?? '') : '',
+                'executionTime'   => $content['useTime'] ?? '',
+                'content'         => $content,
             ];
 
             # 上面 'executionTime' 依赖 content，优化版为避免重复解析 content：
